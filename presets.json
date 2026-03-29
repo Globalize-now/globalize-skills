@@ -1,6 +1,10 @@
 {
   "lingui": {
-    "description": "All LinguiJS skills (setup, translate, code)",
-    "skills": ["lingui-setup", "lingui-translate", "lingui-code"]
+    "description": "All LinguiJS skills (setup, translate, code) plus CSS i18n",
+    "skills": ["lingui-setup", "lingui-translate", "lingui-code", "css-i18n"]
+  },
+  "css": {
+    "description": "CSS internationalization (logical properties, RTL support)",
+    "skills": ["css-i18n"]
   }
 }

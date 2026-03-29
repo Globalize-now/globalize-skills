@@ -157,7 +157,7 @@ t`{gender, select, male {He liked it} female {She liked it} other {They liked it
 
 Skip these — wrapping them would cause false extractions:
 
-- CSS class names: `className="font-bold text-sm"`
+- CSS class names: `className="font-bold text-sm"` — but when writing new CSS, use logical properties (`margin-inline-start`, not `margin-left`; `ms-4`, not `ml-4` in Tailwind). See the `css-i18n` skill.
 - `console.log` / debug strings
 - Import paths and module identifiers
 - Object keys and internal codes
