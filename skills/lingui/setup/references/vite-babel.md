@@ -8,13 +8,14 @@ In addition to the core packages from Step 2, install:
 
 | Package | Type | Purpose |
 |---------|------|---------|
+| `@lingui/detect-locale` | runtime | Browser locale detection (navigator, URL, storage, cookie) |
 | `@lingui/babel-plugin-lingui-macro` | dev | Babel macro transform |
 | `@lingui/vite-plugin` | dev | Vite integration for catalog compilation |
 
 **Example (npm):**
 
 ```bash
-npm install @lingui/core @lingui/react @lingui/macro
+npm install @lingui/core @lingui/react @lingui/macro @lingui/detect-locale
 npm install -D @lingui/cli @lingui/babel-plugin-lingui-macro @lingui/vite-plugin
 ```
 
@@ -52,11 +53,17 @@ Create a minimal i18n setup file — catalog loading happens at the route level,
 ```ts
 // src/i18n.ts
 import { i18n } from '@lingui/core'
+import { detect, fromUrl, fromStorage, fromNavigator } from '@lingui/detect-locale'
 
+const DEFAULT_LOCALE = 'en'
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'])
 
 function getDirection(locale: string): 'ltr' | 'rtl' {
   return RTL_LOCALES.has(locale.split('-')[0]) ? 'rtl' : 'ltr'
+}
+
+export function detectLocale(): string {
+  return detect(fromUrl('lang'), fromStorage('lang'), fromNavigator(), DEFAULT_LOCALE) ?? DEFAULT_LOCALE
 }
 
 export function activateLocale(locale: string, messages: Record<string, string>) {
@@ -65,8 +72,14 @@ export function activateLocale(locale: string, messages: Record<string, string>)
   document.documentElement.dir = getDirection(locale)
 }
 
+export function saveLocale(locale: string) {
+  localStorage.setItem('lang', locale)
+}
+
 export { i18n }
 ```
+
+The `detectLocale()` function tries sources in order: `?lang=` URL parameter, `lang` key in localStorage, browser language settings, then falls back to the default. Call `saveLocale()` when the user explicitly switches locale (e.g., via a language picker) so the choice persists across visits.
 
 Wrap the app with `I18nProvider` at the root (same as single catalog — only the loading location changes).
 
@@ -91,11 +104,11 @@ export const Route = createRootRoute({
 // src/routes/about.tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { Trans } from '@lingui/react/macro'
-import { activateLocale } from '../i18n'
+import { activateLocale, detectLocale } from '../i18n'
 
 export const Route = createFileRoute('/about')({
   beforeLoad: async () => {
-    const locale = 'en' // determine from URL, context, or state
+    const locale = detectLocale()
     const { messages } = await import('./locales/about/' + locale + '.ts')
     activateLocale(locale, messages)
   },
@@ -127,10 +140,10 @@ export default function RootLayout() {
 ```tsx
 // app/routes/about.tsx
 import { Trans } from '@lingui/react/macro'
-import { activateLocale } from '../i18n'
+import { activateLocale, detectLocale } from '../i18n'
 
 export async function loader() {
-  const locale = 'en' // determine from URL params or cookie
+  const locale = detectLocale()
   const { messages } = await import('./locales/about/' + locale + '.ts')
   activateLocale(locale, messages)
   return null
@@ -150,11 +163,17 @@ Create an i18n setup file that loads the global catalog:
 ```ts
 // src/i18n.ts
 import { i18n } from '@lingui/core'
+import { detect, fromUrl, fromStorage, fromNavigator } from '@lingui/detect-locale'
 
+const DEFAULT_LOCALE = 'en'
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'])
 
 function getDirection(locale: string): 'ltr' | 'rtl' {
   return RTL_LOCALES.has(locale.split('-')[0]) ? 'rtl' : 'ltr'
+}
+
+export function detectLocale(): string {
+  return detect(fromUrl('lang'), fromStorage('lang'), fromNavigator(), DEFAULT_LOCALE) ?? DEFAULT_LOCALE
 }
 
 export async function loadCatalog(locale: string) {
@@ -164,8 +183,12 @@ export async function loadCatalog(locale: string) {
   document.documentElement.dir = getDirection(locale)
 }
 
-// Load default locale
-loadCatalog('en')
+export function saveLocale(locale: string) {
+  localStorage.setItem('lang', locale)
+}
+
+// Detect and load the user's preferred locale
+loadCatalog(detectLocale())
 
 export { i18n }
 ```
