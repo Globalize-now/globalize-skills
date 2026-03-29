@@ -234,6 +234,13 @@ import { NextRequest, NextResponse } from 'next/server'
 const locales = ['en', 'fr']  // adjust to match lingui.config.ts
 const defaultLocale = 'en'
 
+function resolveLocaleTag(tag: string): string | undefined {
+  if (locales.includes(tag)) return tag
+  const base = tag.split('-')[0]
+  if (locales.includes(base)) return base
+  return undefined
+}
+
 function resolveAcceptLanguage(header: string): string {
   const entries = header
     .split(',')
@@ -244,10 +251,8 @@ function resolveAcceptLanguage(header: string): string {
     .sort((a, b) => b.quality - a.quality)
 
   for (const { tag } of entries) {
-    if (locales.includes(tag)) return tag
-    // Regional fallback: es-MX → es
-    const base = tag.split('-')[0]
-    if (locales.includes(base)) return base
+    const resolved = resolveLocaleTag(tag)
+    if (resolved) return resolved
   }
 
   return defaultLocale
@@ -264,10 +269,9 @@ export function middleware(request: NextRequest) {
 
   // Cookie from explicit user choice takes priority over browser settings
   const cookieLocale = request.cookies.get('lang')?.value
+  const resolvedCookie = cookieLocale ? resolveLocaleTag(cookieLocale) : undefined
   const detectedLocale =
-    cookieLocale && locales.includes(cookieLocale)
-      ? cookieLocale
-      : resolveAcceptLanguage(request.headers.get('accept-language') ?? '')
+    resolvedCookie ?? resolveAcceptLanguage(request.headers.get('accept-language') ?? '')
 
   request.nextUrl.pathname = `/${detectedLocale}${pathname}`
   return NextResponse.redirect(request.nextUrl)

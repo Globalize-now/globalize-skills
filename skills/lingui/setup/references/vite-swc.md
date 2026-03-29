@@ -73,7 +73,7 @@ import { i18n } from '@lingui/core'
 import { detect, fromUrl, fromStorage, fromNavigator } from '@lingui/detect-locale'
 
 // Must match the `locales` array in lingui.config.ts
-const LOCALES = ['en'] as const
+const LOCALES: readonly string[] = ['en']
 export const DEFAULT_LOCALE = 'en'
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'])
 
@@ -204,7 +204,7 @@ import { i18n } from '@lingui/core'
 import { detect, fromUrl, fromStorage, fromNavigator } from '@lingui/detect-locale'
 
 // Must match the `locales` array in lingui.config.ts
-const LOCALES = ['en'] as const
+const LOCALES: readonly string[] = ['en']
 const DEFAULT_LOCALE = 'en'
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'])
 
