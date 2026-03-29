@@ -151,35 +151,25 @@ function SaveButton() {
 
 ## Numbers, currencies, and dates
 
-These are not handled by Lingui macros — use the `Intl` API for locale-aware formatting.
-
-```tsx
-// Numbers
-const formatted = new Intl.NumberFormat(locale).format(value)
-
-// Currency
-const price = new Intl.NumberFormat(locale, {
-  style: 'currency',
-  currency: 'USD',
-}).format(amount)
-
-// Dates
-const date = new Intl.DateTimeFormat(locale, {
-  dateStyle: 'medium',
-}).format(new Date(timestamp))
-```
-
-Get the current locale from the Lingui i18n instance:
+Use `i18n.number()` and `i18n.date()` for locale-aware formatting — they wrap `Intl.NumberFormat` / `Intl.DateTimeFormat` with the active locale automatically.
 
 ```tsx
 import { useLingui } from '@lingui/react/macro'
 
 function PriceDisplay({ amount }: { amount: number }) {
   const { i18n } = useLingui()
-  const formatted = new Intl.NumberFormat(i18n.locale, {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount)
-  return <span>{formatted}</span>
+  return <span>{i18n.number(amount, { style: 'currency', currency: 'USD' })}</span>
 }
+
+function EventDate({ timestamp }: { timestamp: number }) {
+  const { i18n } = useLingui()
+  return <time>{i18n.date(new Date(timestamp), { dateStyle: 'medium' })}</time>
+}
+```
+
+In non-component code where you have a locale string but no `i18n` instance, use `Intl.NumberFormat` / `Intl.DateTimeFormat` directly:
+
+```tsx
+const formatted = new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(amount)
+const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(timestamp))
 ```

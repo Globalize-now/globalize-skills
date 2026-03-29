@@ -185,35 +185,42 @@ export default function Error({ reset }: { reset: () => void }) {
 
 ## Numbers, currencies, and dates
 
-Use `Intl` APIs with the locale from params or the i18n instance:
+Use `i18n.number()` and `i18n.date()` for locale-aware formatting — they wrap `Intl.NumberFormat` / `Intl.DateTimeFormat` with the active locale automatically.
 
 ```tsx
-// In server components — use lang from params
+// In client components
+'use client'
+import { useLingui } from '@lingui/react/macro'
+
+function Price({ amount }: { amount: number }) {
+  const { i18n } = useLingui()
+  return <span>{i18n.number(amount, { style: 'currency', currency: 'USD' })}</span>
+}
+
+function EventDate({ timestamp }: { timestamp: number }) {
+  const { i18n } = useLingui()
+  return <time>{i18n.date(new Date(timestamp), { dateStyle: 'medium' })}</time>
+}
+```
+
+```tsx
+// In server components — get i18n from server-side setup
+import { getI18nInstance } from '@/i18n'
+
 export default async function PricePage({
   params,
 }: {
   params: Promise<{ lang: string }>
 }) {
   const { lang } = await params
-  const price = new Intl.NumberFormat(lang, {
-    style: 'currency',
-    currency: 'USD',
-  }).format(29.99)
+  const i18n = getI18nInstance(lang)
+  const price = i18n.number(29.99, { style: 'currency', currency: 'USD' })
   return <p><Trans>Price: {price}</Trans></p>
 }
 ```
 
-```tsx
-// In client components — use i18n.locale from useLingui()
-'use client'
-import { useLingui } from '@lingui/react/macro'
+If you don't have an `i18n` instance (e.g. in utility functions), use `Intl.NumberFormat` / `Intl.DateTimeFormat` directly with a locale string:
 
-function Price({ amount }: { amount: number }) {
-  const { i18n } = useLingui()
-  const formatted = new Intl.NumberFormat(i18n.locale, {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount)
-  return <span>{formatted}</span>
-}
+```tsx
+const price = new Intl.NumberFormat(lang, { style: 'currency', currency: 'USD' }).format(29.99)
 ```
