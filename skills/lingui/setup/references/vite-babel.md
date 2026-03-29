@@ -54,8 +54,7 @@ Create a minimal i18n setup file — catalog loading happens at the route level,
 import { i18n } from '@lingui/core'
 
 export function activateLocale(locale: string, messages: Record<string, string>) {
-  i18n.load(locale, messages)
-  i18n.activate(locale)
+  i18n.loadAndActivate({ locale, messages })
 }
 
 export { i18n }
@@ -146,8 +145,7 @@ import { i18n } from '@lingui/core'
 
 export async function loadCatalog(locale: string) {
   const { messages } = await import(`./locales/${locale}/messages.ts`)
-  i18n.load(locale, messages)
-  i18n.activate(locale)
+  i18n.loadAndActivate({ locale, messages })
 }
 
 // Load default locale
