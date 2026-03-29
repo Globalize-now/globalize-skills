@@ -309,7 +309,89 @@ For nested ICU (e.g. plural inside select), use ICU syntax in `<Trans>` — the 
 
 ---
 
-## Step 6: Workflow
+## Step 6: Translator Comments and Context
+
+Ambiguous strings are a top source of translation quality issues. Lingui provides two mechanisms to help translators: **comments** (informational notes) and **context** (disambiguation that generates different message IDs).
+
+### When to add a comment
+
+Add a `comment` whenever a string would be ambiguous to a translator seeing it in a PO file without surrounding code:
+
+- Short, generic words: "Save", "Home", "Post", "Run", "Clear"
+- Strings with placeholders where the meaning isn't obvious: `Hello, {name}!` — is `name` a person's name or a project name?
+- UI-specific terms: "Toast", "Drawer", "Badge" — could be interpreted literally
+- Action labels that depend on context: "Remove" — remove what?
+
+### `comment` prop on `<Trans>`
+
+```tsx
+<Trans comment="Main navigation link, not the building">Home</Trans>
+<Trans comment="Save button in document editor toolbar">Save</Trans>
+<Trans comment="Number of unread notifications">You have {count} new alerts</Trans>
+```
+
+### `comment` field in `msg` and `t` descriptors
+
+When using the object form of `msg` or `t`, add the `comment` field:
+
+```tsx
+import { msg } from '@lingui/core/macro'
+
+const actions = {
+  save: msg({ message: `Save`, comment: "Save document button" }),
+  post: msg({ message: `Post`, comment: "Publish a blog post" }),
+  run: msg({ message: `Run`, comment: "Execute a code snippet" }),
+}
+```
+
+```tsx
+const { t } = useLingui()
+const label = t({ message: `Clear`, comment: "Clear search input field" })
+```
+
+### `context` prop for disambiguation
+
+Use `context` when the same English string needs **different translations** in different places. Unlike `comment`, `context` affects the generated message ID — so the same text with different contexts becomes two separate entries in the catalog.
+
+```tsx
+import { Trans } from '@lingui/react/macro'
+
+<Trans context="direction">Right</Trans>
+<Trans context="correctness">Right</Trans>
+```
+
+```tsx
+import { msg } from '@lingui/core/macro'
+
+const ex1 = msg({ message: `Open`, context: "door action" })
+const ex2 = msg({ message: `Open`, context: "file status" })
+```
+
+### What appears in PO files
+
+```po
+#. Save document button
+msgid "Save"
+msgstr ""
+
+#. Clear search input field
+msgid "Clear"
+msgstr ""
+
+msgctxt "direction"
+msgid "Right"
+msgstr ""
+
+msgctxt "correctness"
+msgid "Right"
+msgstr ""
+```
+
+`comment` becomes `#.` (translator comment). `context` becomes `msgctxt` (message context — produces a separate translation entry).
+
+---
+
+## Step 7: Workflow
 
 Work file-by-file in this priority order:
 

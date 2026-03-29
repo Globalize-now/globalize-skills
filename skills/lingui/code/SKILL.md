@@ -164,3 +164,24 @@ Skip these — wrapping them would cause false extractions:
 - `ALL_CAPS` enum values
 - `data-testid` attributes
 - URL strings and API paths
+
+---
+
+## Translator comments
+
+Add a `comment` when the string is ambiguous out of context — short generic words ("Save", "Post", "Home"), action labels, or strings with non-obvious placeholders.
+
+```tsx
+<Trans comment="Main navigation link, not the building">Home</Trans>
+
+const items = [
+  { label: msg({ message: `Save`, comment: "Save document button" }), href: '/save' },
+]
+```
+
+Use `context` when the same English text needs different translations in different places:
+
+```tsx
+<Trans context="direction">Right</Trans>
+<Trans context="correctness">Right</Trans>
+```

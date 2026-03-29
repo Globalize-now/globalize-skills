@@ -81,7 +81,7 @@ export async function generateMetadata({
   const { lang } = await params
   const i18n = getI18nInstance(lang)
   return {
-    title: i18n._(msg`Settings`),
+    title: i18n._(msg({ message: `Settings`, comment: "Settings page title" })),
     description: i18n._(msg`Manage your account settings`),
   }
 }
@@ -123,7 +123,7 @@ import { msg } from '@lingui/core/macro'
 import type { MessageDescriptor } from '@lingui/core'
 
 export const sidebarItems: Array<{ label: MessageDescriptor; href: string }> = [
-  { label: msg`Dashboard`, href: '/' },
+  { label: msg({ message: `Dashboard`, comment: "Main navigation sidebar" }), href: '/' },
   { label: msg`Users`, href: '/users' },
   { label: msg`Settings`, href: '/settings' },
 ]

@@ -35,7 +35,7 @@ import type { MessageDescriptor } from '@lingui/core'
 
 // Define at module scope — msg marks strings for extraction without calling t
 const sidebarItems: Array<{ label: MessageDescriptor; href: string }> = [
-  { label: msg`Dashboard`, href: '/' },
+  { label: msg({ message: `Dashboard`, comment: "Main navigation sidebar" }), href: '/' },
   { label: msg`Users`, href: '/users' },
   { label: msg`Settings`, href: '/settings' },
   { label: msg`Reports`, href: '/reports' },
@@ -57,6 +57,8 @@ function Sidebar() {
 ```
 
 > **Why not `t` at module scope?** `t` at module scope would be called once at module initialization, before the i18n instance is activated with the user's locale. `msg` returns a descriptor object that is resolved lazily when `t(descriptor)` is called inside a component.
+
+> **Translator comments:** Use the object form `msg({ message: \`...\`, comment: "..." })` when a string is ambiguous — short words like "Dashboard" benefit from context like "Main navigation sidebar" so translators know the UI location.
 
 ---
 
