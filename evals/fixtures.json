@@ -1,0 +1,23 @@
+{
+  "nextjs-app-router": {
+    "type": "local",
+    "path": "fixtures/nextjs-app-router",
+    "variant": "nextjs-app-router"
+  },
+  "vite-swc": {
+    "type": "local",
+    "path": "fixtures/vite-swc",
+    "variant": "vite-swc"
+  },
+  "vite-babel": {
+    "type": "local",
+    "path": "fixtures/vite-babel",
+    "variant": "vite-babel"
+  },
+  "shadcn-admin": {
+    "type": "git",
+    "repo": "https://github.com/satnaing/shadcn-admin.git",
+    "commit": "a750f776f952997b6488714cdffde4badaa6c3e6",
+    "variant": "vite-swc"
+  }
+}

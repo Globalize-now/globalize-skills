@@ -1,0 +1,15 @@
+{
+  "wrapped_strings": [
+    { "file": "src/features/dashboard/index.tsx", "original": "Dashboard" },
+    { "file": "src/features/dashboard/index.tsx", "original": "Total Revenue" },
+    { "file": "src/features/dashboard/index.tsx", "original": "Subscriptions" },
+    { "file": "src/features/dashboard/index.tsx", "original": "Recent Sales" },
+    { "file": "src/features/dashboard/index.tsx", "original": "Download" },
+    { "file": "src/components/layout/data/sidebar-data.ts", "original": "Dashboard" },
+    { "file": "src/components/layout/data/sidebar-data.ts", "original": "Settings" },
+    { "file": "src/components/layout/data/sidebar-data.ts", "original": "Tasks" },
+    { "file": "src/features/auth/sign-in/components/user-auth-form.tsx", "original": "Please enter your email" }
+  ],
+  "min_files_with_trans": 5,
+  "min_extracted_messages": 10
+}
