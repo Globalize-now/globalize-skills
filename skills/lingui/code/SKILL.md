@@ -1,5 +1,6 @@
 ---
 name: lingui-code
+user_invocable: false
 description: >-
   Apply automatically whenever writing or modifying UI code in a LinguiJS
   project — new components, new strings, edited copy, new form fields, anything
