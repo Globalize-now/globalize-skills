@@ -101,6 +101,17 @@ Shared components imported by multiple pages will have their strings duplicated 
 
 > The experimental extractor is labeled "experimental" in Lingui v4 but is stable for production use.
 
+**Optional: merge per-page catalogs at compile time.** If you want per-page extraction (for translator workflow — translators see only the strings relevant to each page) but prefer loading a single catalog file per locale at runtime (simpler provider wiring, no per-route dynamic imports), add `catalogsMergePath` to the config:
+
+```ts
+const config: LinguiConfig = {
+  // ...same experimental.extractor config as above...
+  catalogsMergePath: 'locales/{locale}',
+}
+```
+
+With this set, `lingui compile` merges all per-page `.po` files into one output file per locale at `locales/en.ts`, `locales/fr.ts`, etc. The provider wiring then follows the single-catalog pattern (load one file, pass to `i18n.load()`) instead of per-route dynamic imports.
+
 ### Single catalog (for plain SPAs without file-based routing)
 
 If the project has no file-based routing (plain Vite SPA, CRA, or programmatic routing only), use a single global catalog:

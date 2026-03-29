@@ -86,6 +86,14 @@ function Nav() {
 }
 ```
 
+> **Tree-shaking caveat:** Module-scope `msg` calls are side-effects that bundlers cannot remove, so the containing array/object ships in every chunk that imports the module — even if unused. For lazy-loaded routes in large apps, wrap the definition in a `/* @__PURE__ */` IIFE so the bundler can drop it when nothing references it:
+> ```tsx
+> const items = /* @__PURE__ */ (() => [
+>   { label: msg`Home`, href: '/' },
+>   { label: msg`Settings`, href: '/settings' },
+> ])()
+> ```
+
 ---
 
 ## Numbers, currencies, dates
