@@ -60,7 +60,102 @@ export default defineConfig({
 
 ## Provider Setup (Step 5)
 
-Create an i18n setup file:
+The setup depends on whether the project uses per-page catalogs (file-based routing) or a single global catalog.
+
+### Per-page catalogs (TanStack Router, React Router with file-based routing)
+
+Create a minimal i18n setup file — catalog loading happens at the route level, not here:
+
+```ts
+// src/i18n.ts
+import { i18n } from '@lingui/core'
+
+export function activateLocale(locale: string, messages: Record<string, string>) {
+  i18n.load(locale, messages)
+  i18n.activate(locale)
+}
+
+export { i18n }
+```
+
+Wrap the app with `I18nProvider` at the root (same as single catalog — only the loading location changes).
+
+**TanStack Router** — wrap in `__root.tsx`, load catalogs in each route:
+
+```tsx
+// src/routes/__root.tsx
+import { createRootRoute, Outlet } from '@tanstack/react-router'
+import { I18nProvider } from '@lingui/react'
+import { i18n } from '../i18n'
+
+export const Route = createRootRoute({
+  component: () => (
+    <I18nProvider i18n={i18n}>
+      <Outlet />
+    </I18nProvider>
+  ),
+})
+```
+
+```tsx
+// src/routes/about.tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { Trans } from '@lingui/react/macro'
+import { activateLocale } from '../i18n'
+
+export const Route = createFileRoute('/about')({
+  beforeLoad: async () => {
+    const locale = 'en' // determine from URL, context, or state
+    const { messages } = await import('./locales/about/' + locale + '.ts')
+    activateLocale(locale, messages)
+  },
+  component: AboutPage,
+})
+
+function AboutPage() {
+  return <h1><Trans>About us</Trans></h1>
+}
+```
+
+**React Router** — wrap in root layout, load catalogs in each route loader:
+
+```tsx
+// Root layout (unchanged)
+import { Outlet } from 'react-router'
+import { I18nProvider } from '@lingui/react'
+import { i18n } from './i18n'
+
+export default function RootLayout() {
+  return (
+    <I18nProvider i18n={i18n}>
+      <Outlet />
+    </I18nProvider>
+  )
+}
+```
+
+```tsx
+// app/routes/about.tsx
+import { Trans } from '@lingui/react/macro'
+import { activateLocale } from '../i18n'
+
+export async function loader() {
+  const locale = 'en' // determine from URL params or cookie
+  const { messages } = await import('./locales/about/' + locale + '.ts')
+  activateLocale(locale, messages)
+  return null
+}
+
+export default function AboutPage() {
+  return <h1><Trans>About us</Trans></h1>
+}
+```
+
+Each route loads its own co-located catalog. Shared component strings are duplicated across route catalogs — this is the expected trade-off for smaller per-page bundles.
+
+### Single catalog (plain SPA without file-based routing)
+
+Create an i18n setup file that loads the global catalog:
 
 ```ts
 // src/i18n.ts
@@ -78,9 +173,7 @@ loadCatalog('en')
 export { i18n }
 ```
 
-Wrap the app with `I18nProvider`. Where to place it depends on the router:
-
-**No router / simple app** — wrap in `main.tsx`:
+Wrap the app with `I18nProvider` in `main.tsx`:
 
 ```tsx
 import { I18nProvider } from '@lingui/react'
@@ -92,36 +185,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </I18nProvider>,
 )
-```
-
-**TanStack Router** — wrap in `__root.tsx`:
-
-```tsx
-import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { I18nProvider } from '@lingui/react'
-import { i18n } from '../i18n'
-
-export const Route = createRootRoute({
-  component: () => (
-    <I18nProvider i18n={i18n}>
-      <Outlet />
-    </I18nProvider>
-  ),
-})
-```
-
-**React Router** — wrap in the root layout route:
-
-```tsx
-import { Outlet } from 'react-router'
-import { I18nProvider } from '@lingui/react'
-import { i18n } from './i18n'
-
-export default function RootLayout() {
-  return (
-    <I18nProvider i18n={i18n}>
-      <Outlet />
-    </I18nProvider>
-  )
-}
 ```

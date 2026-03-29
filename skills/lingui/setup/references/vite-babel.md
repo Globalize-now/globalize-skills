@@ -43,34 +43,9 @@ If the project already has Babel plugins configured in the `react()` call, add `
 
 ## Provider Setup (Step 5)
 
-The provider setup is identical to Vite + SWC. Create `src/i18n.ts`:
+The provider setup is identical to Vite + SWC — refer to `references/vite-swc.md` for full details. The same two paths apply:
 
-```ts
-import { i18n } from '@lingui/core'
+- **Per-page catalogs** (file-based routing): Create a minimal `src/i18n.ts` with `activateLocale`, load catalogs at the route level.
+- **Single catalog** (plain SPA): Create `src/i18n.ts` with `loadCatalog`, load the global catalog at app init.
 
-export async function loadCatalog(locale: string) {
-  const { messages } = await import(`./locales/${locale}/messages.ts`)
-  i18n.load(locale, messages)
-  i18n.activate(locale)
-}
-
-// Load default locale
-loadCatalog('en')
-
-export { i18n }
-```
-
-Wrap the app with `I18nProvider` at the highest level — in `main.tsx`, the root route layout, or wherever the component tree begins:
-
-```tsx
-import { I18nProvider } from '@lingui/react'
-import { i18n } from './i18n'
-
-function App() {
-  return (
-    <I18nProvider i18n={i18n}>
-      {/* app content */}
-    </I18nProvider>
-  )
-}
-```
+Wrap the app with `I18nProvider` at the highest level — in `main.tsx`, the root route layout, or wherever the component tree begins.

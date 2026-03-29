@@ -30,6 +30,9 @@ Read the project's `package.json`, build config (`vite.config.*`, `next.config.*
 | **Router** | `@tanstack/react-router` → TanStack Router. `react-router` → React Router. Next.js → file-based routing. |
 | **TypeScript** | `typescript` in devDeps or `tsconfig.json` exists. |
 | **Package manager** | `package-lock.json` → npm. `yarn.lock` → yarn. `pnpm-lock.yaml` → pnpm. `bun.lock` → bun. |
+| **Route entry points** | Next.js App Router: `src/app/**/page.tsx` exists. TanStack Router (file-based): `src/routes/` directory exists. React Router v7 framework mode: `app/routes/` exists. If none found → plain SPA (no file-based routing). |
+
+Determine whether the project uses **file-based routing** with identifiable page entry points. This decides whether to use per-page catalog splitting (Step 3) or a single global catalog.
 
 Based on the detection, pick the right variant reference file:
 
@@ -62,6 +65,46 @@ Additional packages (compiler plugin, build tool plugin) are specified in the re
 
 Create `lingui.config.ts` (or `.js` for CJS projects) in the project root, next to `package.json`.
 
+### Per-page catalogs (default for file-based routing)
+
+If the project has file-based routing (detected in Step 1), use Lingui's experimental extractor to produce per-page catalogs. This crawls the dependency tree from each route entry point, so every page only loads the translations it actually uses — critical for keeping bundle sizes small at scale.
+
+```ts
+import type { LinguiConfig } from '@lingui/conf'
+
+const config: LinguiConfig = {
+  sourceLocale: 'en',
+  locales: ['en'],
+  catalogs: [],
+  experimental: {
+    extractor: {
+      entries: ['<rootDir>/src/app/**/page.tsx'],
+      output: '<rootDir>/{entryDir}/locales/{entryName}/{locale}',
+    },
+  },
+}
+
+export default config
+```
+
+Set the `entries` glob to match the project's route entry points:
+
+| Router | `entries` glob |
+|--------|---------------|
+| Next.js App Router | `<rootDir>/src/app/**/page.tsx` |
+| TanStack Router (file-based) | `<rootDir>/src/routes/**/*.tsx` |
+| React Router v7 framework mode | `<rootDir>/app/routes/**/*.tsx` |
+
+Adjust the file extension (`.tsx` vs `.jsx` / `.ts` vs `.js`) to match the project. The `output` pattern uses `{entryDir}` (directory of the entry file), `{entryName}` (filename without extension), and `{locale}` to place catalogs co-located next to each page — e.g., `src/app/about/page.tsx` produces `src/app/about/locales/page/en.po`.
+
+Shared components imported by multiple pages will have their strings duplicated across each page's catalog. This is the expected trade-off — smaller per-page bundles at the cost of slightly larger total catalog size.
+
+> The experimental extractor is labeled "experimental" in Lingui v4 but is stable for production use.
+
+### Single catalog (for plain SPAs without file-based routing)
+
+If the project has no file-based routing (plain Vite SPA, CRA, or programmatic routing only), use a single global catalog:
+
 ```ts
 import type { LinguiConfig } from '@lingui/conf'
 
@@ -79,13 +122,13 @@ const config: LinguiConfig = {
 export default config
 ```
 
+### Common config options
+
 Adjust based on context:
 
 - **`sourceLocale`**: The language the source code is written in. Almost always `'en'`.
 - **`locales`**: Include the source locale plus any target languages the user requested.
-- **`catalogs[].path`**: Where message catalog files go. The `{locale}` placeholder creates per-language directories.
-- **`catalogs[].include`**: Which directories to scan for translatable strings.
-- **Monorepos**: The config goes in the package that contains the UI code, not the monorepo root. Adjust `include` paths accordingly.
+- **Monorepos**: The config goes in the package that contains the UI code, not the monorepo root. Adjust `include` paths (single catalog) or `entries` paths (per-page) accordingly.
 - **Catalog format**: Lingui defaults to PO (gettext) format — the industry standard with rich metadata and broad TMS/translation tool support. This is the recommended format for most projects. If the team's translation tooling requires a different format, Lingui also supports `@lingui/format-json`, `@lingui/format-csv`, and `@lingui/format-po-gettext`. Ask the user before changing from the default. To use an alternative format, install the format package and add the `format` key to the config:
 
   ```ts
@@ -97,8 +140,21 @@ Adjust based on context:
   }
   ```
 
+### Scripts
+
 Add extract and compile scripts to `package.json`:
 
+**Per-page catalogs:**
+```json
+{
+  "scripts": {
+    "lingui:extract": "lingui extract-experimental --clean",
+    "lingui:compile": "lingui compile --typescript"
+  }
+}
+```
+
+**Single catalog:**
 ```json
 {
   "scripts": {
@@ -177,6 +233,12 @@ The `recommended` preset enables:
 
 Run extraction to generate the initial catalog files:
 
+**Per-page catalogs:**
+```bash
+npx lingui extract-experimental
+```
+
+**Single catalog:**
 ```bash
 npx lingui extract
 ```
@@ -187,16 +249,23 @@ Then compile so the app can boot (include `--typescript` only for TypeScript pro
 npx lingui compile --typescript
 ```
 
-**What to commit:** The `.po` source catalogs created by `lingui extract` are the translation source of truth — translators edit these files. They must be committed to version control.
+**What to commit:** The `.po` source catalogs are the translation source of truth — translators edit these files. They must be committed to version control.
 
 **What to gitignore:** Compiled catalogs generated by `lingui compile` are build artifacts that get regenerated at build time. Add them to `.gitignore`:
 
+**Per-page catalogs:**
+```
+# Lingui compiled catalogs (per-page)
+src/**/locales/**/*.ts
+```
+
+**Single catalog:**
 ```
 # Lingui compiled catalogs
 src/locales/*/messages.ts
 ```
 
-Use `messages.js` instead if the project is JavaScript-only (i.e., you omitted `--typescript` from the compile command).
+Use `.js` instead of `.ts` if the project is JavaScript-only (i.e., you omitted `--typescript` from the compile command).
 
 **Verify the setup works:**
 
@@ -208,9 +277,10 @@ Use `messages.js` instead if the project is JavaScript-only (i.e., you omitted `
      return <h1><Trans>Hello World</Trans></h1>
    }
    ```
-3. `npx lingui extract` finds the message
-4. `npx lingui compile` (with `--typescript` if applicable) compiles without errors
-5. The string renders in the browser
+3. Run the extract command (per-page: `npx lingui extract-experimental`, single catalog: `npx lingui extract`) — it should find the message
+4. For per-page catalogs, verify that catalog directories appeared co-located next to page files (e.g., `src/app/about/locales/page/en.po` for a page at `src/app/about/page.tsx`)
+5. `npx lingui compile` (with `--typescript` if applicable) compiles without errors
+6. The string renders in the browser
 
 If any step fails, check the build tool integration (Step 4) first — that's where most setup issues originate.
 
@@ -222,7 +292,10 @@ Set up catalog checks and build-time compilation so the i18n pipeline stays heal
 
 ### Catalog freshness check
 
-Add `lingui extract --clean` as a CI step (e.g., in a GitHub Actions workflow or pre-merge check). It exits non-zero if the catalogs are out of date — meaning someone added or changed translatable strings but forgot to run `lingui extract`. This catches stale catalogs in PRs before they land.
+Add the extract command as a CI step (e.g., in a GitHub Actions workflow or pre-merge check). It exits non-zero if the catalogs are out of date — meaning someone added or changed translatable strings but forgot to run extract. This catches stale catalogs in PRs before they land.
+
+- **Per-page catalogs:** `lingui extract-experimental --clean`
+- **Single catalog:** `lingui extract --clean`
 
 ### Compile at build time
 
@@ -237,7 +310,7 @@ If the build script can't be reliably identified, inform the user that they need
 
 ### Translation coverage
 
-`lingui extract` prints per-locale stats showing how many messages are missing translations. Teams can use this output to monitor translation coverage — for example, by failing CI if a locale drops below a threshold, or simply logging it for visibility.
+The extract command prints per-locale stats showing how many messages are missing translations. Teams can use this output to monitor translation coverage — for example, by failing CI if a locale drops below a threshold, or simply logging it for visibility.
 
 ---
 
@@ -247,6 +320,59 @@ If the build script can't be reliably identified, inform the user that they need
 - **Missing macro transform**: `ReferenceError: Trans is not defined` at runtime means the macro plugin isn't running. Check the build tool config.
 - **ESM/CJS conflicts**: ESM projects use `lingui.config.ts`. CJS projects use `lingui.config.js` with `module.exports`.
 - **Monorepo root vs package**: `lingui.config.ts` goes next to the `package.json` of the package that contains the UI code, not the monorepo root.
+- **`extract-experimental` not finding messages**: Ensure the `entries` glob in `lingui.config.ts` actually matches the project's page files. If a shared component's strings are missing from a page catalog, verify it is imported (directly or transitively) from that page's entry point.
+
+---
+
+## Quick Start: Using Macros
+
+LinguiJS is now configured. Here are the four patterns you'll use most:
+
+**JSX text content — `<Trans>`:**
+```tsx
+import { Trans } from '@lingui/react/macro'
+
+<h1><Trans>Welcome back</Trans></h1>
+<button><Trans>Save changes</Trans></button>
+```
+
+**Attributes and variables inside components — `useLingui()` + `t`:**
+```tsx
+import { useLingui } from '@lingui/react/macro'
+
+function SearchBar() {
+  const { t } = useLingui()
+  return <input placeholder={t`Search...`} aria-label={t`Search`} />
+}
+```
+
+**Constants defined outside components — `msg` + `t(descriptor)`:**
+```tsx
+import { msg } from '@lingui/core/macro'
+import { useLingui } from '@lingui/react/macro'
+
+const navItems = [
+  { label: msg`Dashboard`, href: '/' },
+  { label: msg`Settings`, href: '/settings' },
+]
+
+function Nav() {
+  const { t } = useLingui()
+  return navItems.map(item => <a href={item.href}>{t(item.label)}</a>)
+}
+```
+
+**Plurals — ICU MessageFormat inside `<Trans>` or `t`:**
+```tsx
+<Trans>{count, plural, one {# item selected} other {# items selected}}</Trans>
+
+// t version
+const label = t`{count, plural, one {# item} other {# items}}`
+```
+
+> Always include `other` — it is required and serves as the fallback for all languages.
+
+For comprehensive string wrapping, localization gap detection (numbers, currencies, dates), and full ICU MessageFormat guidance, use the `lingui-translate` skill.
 
 ---
 
@@ -264,4 +390,4 @@ Catalog files (PO or JSON) need a translation pipeline. Options:
 
 ### Wrap existing strings
 
-This skill set up the infrastructure but did **not** convert existing hardcoded strings to `<Trans>` or `t` macros. Run `/lingui-convert` to automatically wrap existing strings with LinguiJS macros.
+This skill set up the infrastructure but did **not** convert existing hardcoded strings to `<Trans>` or `t` macros. Use the `lingui-translate` skill to automatically wrap existing strings with LinguiJS macros.

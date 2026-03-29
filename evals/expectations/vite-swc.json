@@ -1,0 +1,8 @@
+{
+  "wrapped_strings": [
+    { "file": "src/App.tsx", "original": "Hello World" },
+    { "file": "src/App.tsx", "original": "This is a sample app for testing i18n setup." }
+  ],
+  "min_files_with_trans": 1,
+  "min_extracted_messages": 2
+}

@@ -1,0 +1,9 @@
+{
+  "wrapped_strings": [
+    { "file": "app/[lang]/page.tsx", "original": "Deploy Now" },
+    { "file": "app/[lang]/page.tsx", "original": "Documentation" },
+    { "file": "app/[lang]/page.tsx", "original": "Templates" }
+  ],
+  "min_files_with_trans": 1,
+  "min_extracted_messages": 3
+}
