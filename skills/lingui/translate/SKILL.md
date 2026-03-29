@@ -202,7 +202,7 @@ Review these and translate only if they appear in the actual UI:
 
 ICU MessageFormat handles plurals, gender selection, and other locale-sensitive patterns. This is the most commonly misused feature — get it right the first time.
 
-In JSX, prefer the `<Plural>` and `<Select>` macros — they are more readable and compile to `<Trans>` with ICU syntax automatically. In non-JSX contexts, use ICU syntax inside `t`.
+In JSX, prefer the `<Plural>`, `<Select>`, and `<SelectOrdinal>` macros — they are more readable and compile to `<Trans>` with ICU syntax automatically. In non-JSX contexts, use ICU syntax inside `t`.
 
 ### Plurals
 
@@ -252,6 +252,26 @@ import { Select } from '@lingui/react/macro'
 // Non-JSX — use ICU syntax in t
 t`{gender, select, male {He liked your post} female {She liked your post} other {They liked your post}}`
 ```
+
+### Ordinal plurals (1st, 2nd, 3rd)
+
+Use `<SelectOrdinal>` for position/ranking strings — "1st place", "2nd floor", "3rd attempt". Ordinal rules differ from cardinal rules: English has `one` (1st, 21st), `two` (2nd, 22nd), `few` (3rd, 23rd), and `other` (4th–20th, 24th+).
+
+```tsx
+import { SelectOrdinal } from '@lingui/react/macro'
+
+// JSX — use SelectOrdinal macro (preferred)
+<SelectOrdinal value={position} one="#st" two="#nd" few="#rd" other="#th" />
+
+// With surrounding text
+<Trans>You finished in <SelectOrdinal value={position} one="#st" two="#nd" few="#rd" other="#th" /> place.</Trans>
+
+// Non-JSX — use ICU syntax in t
+const { t } = useLingui()
+const label = t`{position, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}`
+```
+
+**Cardinal vs. ordinal categories differ.** English cardinal plurals use only `one`/`other`, but English ordinal plurals use `one`/`two`/`few`/`other`. Other languages have their own ordinal rules — always include `other` as fallback.
 
 ### Nested plurals (complex cases)
 

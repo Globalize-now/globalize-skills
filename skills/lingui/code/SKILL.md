@@ -122,7 +122,7 @@ In Next.js server components, get `i18n` from your server-side setup (e.g. `getI
 
 ## Plurals, select, and ICU MessageFormat
 
-In JSX, prefer the `<Plural>` and `<Select>` macros — they are more readable and compile to `<Trans>` with ICU syntax automatically. In non-JSX contexts (template literals), use ICU syntax inside `t`.
+In JSX, prefer the `<Plural>`, `<Select>`, and `<SelectOrdinal>` macros — they are more readable and compile to `<Trans>` with ICU syntax automatically. In non-JSX contexts (template literals), use ICU syntax inside `t`.
 
 Never use ternaries to pick between two separate translation strings.
 
@@ -150,6 +150,20 @@ count === 1 ? t`item` : t`items`
 // Non-JSX — use ICU syntax in t
 t`{gender, select, male {He liked it} female {She liked it} other {They liked it}}`
 ```
+
+**SelectOrdinal (ordinal positions):**
+```tsx
+// JSX — use SelectOrdinal macro (preferred)
+<SelectOrdinal value={position} one="#st" two="#nd" few="#rd" other="#th" />
+
+// With surrounding text
+<Trans>You finished in <SelectOrdinal value={position} one="#st" two="#nd" few="#rd" other="#th" /> place.</Trans>
+
+// Non-JSX — use ICU syntax in t
+t`{position, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}`
+```
+
+Ordinal categories differ from cardinal — English ordinals use `one` (1st, 21st), `two` (2nd, 22nd), `few` (3rd, 23rd), `other` (4th+).
 
 ### Rules
 
