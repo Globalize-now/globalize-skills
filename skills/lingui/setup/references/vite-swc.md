@@ -70,8 +70,16 @@ Create a minimal i18n setup file — catalog loading happens at the route level,
 // src/i18n.ts
 import { i18n } from '@lingui/core'
 
+const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'])
+
+function getDirection(locale: string): 'ltr' | 'rtl' {
+  return RTL_LOCALES.has(locale.split('-')[0]) ? 'rtl' : 'ltr'
+}
+
 export function activateLocale(locale: string, messages: Record<string, string>) {
   i18n.loadAndActivate({ locale, messages })
+  document.documentElement.lang = locale
+  document.documentElement.dir = getDirection(locale)
 }
 
 export { i18n }
@@ -160,9 +168,17 @@ Create an i18n setup file that loads the global catalog:
 // src/i18n.ts
 import { i18n } from '@lingui/core'
 
+const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'])
+
+function getDirection(locale: string): 'ltr' | 'rtl' {
+  return RTL_LOCALES.has(locale.split('-')[0]) ? 'rtl' : 'ltr'
+}
+
 export async function loadCatalog(locale: string) {
   const { messages } = await import(`./locales/${locale}/messages.ts`)
   i18n.loadAndActivate({ locale, messages })
+  document.documentElement.lang = locale
+  document.documentElement.dir = getDirection(locale)
 }
 
 // Load default locale

@@ -184,6 +184,23 @@ For **standard React apps** (Vite, CRA), the provider goes in:
 
 The goal is to wrap the entire component tree once, at the highest level.
 
+### Text direction (RTL support)
+
+The `<html>` element needs both `lang` and `dir` attributes. Lingui handles translation loading but not layout direction — the setup code must set `dir` based on the active locale. Create a helper:
+
+```ts
+const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi'])
+
+export function getDirection(locale: string): 'ltr' | 'rtl' {
+  return RTL_LOCALES.has(locale.split('-')[0]) ? 'rtl' : 'ltr'
+}
+```
+
+The `split('-')[0]` ensures regional variants like `ar-EG` resolve correctly. The reference files show where to place this helper and how to wire it for each variant:
+
+- **Next.js App Router**: Separate `getDirection.ts` file, used in the root layout to set `<html lang={lang} dir={direction}>`
+- **Vite (SWC / Babel)**: Inline in `src/i18n.ts`, sets `document.documentElement.dir` and `.lang` on locale activation
+
 ---
 
 ## Step 6: Set Up ESLint Plugin
@@ -396,6 +413,7 @@ Vitest uses the same SWC or Babel plugin configured in `vite.config.ts` (Step 4)
 - **Monorepo root vs package**: `lingui.config.ts` goes next to the `package.json` of the package that contains the UI code, not the monorepo root.
 - **`extract-experimental` not finding messages**: Ensure the `entries` glob in `lingui.config.ts` actually matches the project's page files. If a shared component's strings are missing from a page catalog, verify it is imported (directly or transitively) from that page's entry point.
 - **Tests fail after adding i18n**: Components using `<Trans>` or `useLingui()` need `I18nProvider` in the test render tree. See Step 9.
+- **Missing `dir` attribute / LTR-only CSS**: If any target locale is RTL (Arabic, Hebrew, Persian, Urdu, etc.), the `<html>` element must have `dir="rtl"`. Without it, text alignment, flexbox order, and scrollbar placement break. Equally important: CSS must use logical properties (`margin-inline-start` instead of `margin-left`, `padding-inline-end` instead of `padding-right`, `inset-inline-start` instead of `left`). Physical properties don't flip in RTL and require a full CSS audit to fix retroactively. Adopt logical properties from the start — see Step 5.
 
 ---
 
