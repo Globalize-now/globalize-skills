@@ -1,5 +1,5 @@
 // TODO: This file is a temporary copy of api-client/src/device-auth.ts.
-// Once @globalize-now/client is published, replace with an import from that package.
+// Once @globalize-now/cli-client is published, replace with an import from that package.
 import { randomBytes, createHash } from 'node:crypto';
 import { exec } from 'node:child_process';
 import { platform } from 'node:os';

@@ -1,5 +1,5 @@
 {
-  "name": "@globalize-now/client",
+  "name": "@globalize-now/cli-client",
   "version": "0.1.0",
   "type": "module",
   "description": "CLI and library client for the Globalize translation platform",

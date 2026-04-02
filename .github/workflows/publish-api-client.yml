@@ -1,0 +1,43 @@
+name: Publish API Client
+
+on:
+  push:
+    branches: [main]
+    paths: [api-client/**]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+        working-directory: api-client
+
+      - run: npm run build
+        working-directory: api-client
+
+      - name: Bump patch version
+        working-directory: api-client
+        run: npm version patch --no-git-tag-version
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add api-client/package.json api-client/package-lock.json
+          git commit -m "chore: bump @globalize-now/cli-client to $(node -p "require('./api-client/package.json').version")"
+          git push
+
+      - run: npm publish --access public
+        working-directory: api-client
