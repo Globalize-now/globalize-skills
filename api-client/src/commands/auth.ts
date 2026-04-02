@@ -2,6 +2,7 @@ import { createInterface } from 'node:readline/promises';
 import chalk from 'chalk';
 import type { Command } from 'commander';
 import { readConfigFile, writeConfigFile, deleteConfigFile } from '../auth.js';
+import { output, type OutputOptions } from '../format.js';
 
 const SETTINGS_URL = 'https://app.globalize.now/settings/api-keys';
 const DEFAULT_API_URL = 'https://api.globalize.now';
@@ -33,23 +34,30 @@ export function register(group: Command) {
   group
     .command('status')
     .description('Show current authentication state')
-    .action(async () => {
+    .action(async (_cmdOpts, cmd) => {
+      const opts: OutputOptions = cmd.optsWithGlobals();
+
+      let source: string;
+      let keyPrefix: string;
+      let apiUrl: string;
+
       if (process.env.GLOBALIZE_API_KEY) {
         const key = process.env.GLOBALIZE_API_KEY;
-        console.log(`Source:  ${chalk.cyan('GLOBALIZE_API_KEY env var')}`);
-        console.log(`Key:    ${chalk.dim(key.slice(0, 8) + '...')}`);
-        console.log(`API:    ${process.env.GLOBALIZE_API_URL || DEFAULT_API_URL}`);
-        return;
+        source = 'GLOBALIZE_API_KEY env var';
+        keyPrefix = key.slice(0, 8) + '...';
+        apiUrl = process.env.GLOBALIZE_API_URL || DEFAULT_API_URL;
+      } else {
+        const config = await readConfigFile();
+        if (!config.apiKey) {
+          console.log(chalk.yellow('Not authenticated. Run `globalise-now-cli auth login` to set up.'));
+          return;
+        }
+        source = '~/.globalize/config.json';
+        keyPrefix = config.apiKey.slice(0, 8) + '...';
+        apiUrl = config.apiUrl || DEFAULT_API_URL;
       }
 
-      const config = await readConfigFile();
-      if (config.apiKey) {
-        console.log(`Source:  ${chalk.cyan('~/.globalize/config.json')}`);
-        console.log(`Key:    ${chalk.dim(config.apiKey.slice(0, 8) + '...')}`);
-        console.log(`API:    ${config.apiUrl || DEFAULT_API_URL}`);
-      } else {
-        console.log(chalk.yellow('Not authenticated. Run `globalise-now-cli auth login` to set up.'));
-      }
+      output({ source, key: keyPrefix, api: apiUrl }, opts);
     });
 
   group
