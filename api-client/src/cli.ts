@@ -1,5 +1,8 @@
 import { Command } from "commander";
 import chalk from "chalk";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { resolveAuth } from "./auth.js";
 import { createApiClient, type ApiClient } from "./client.js";
 import { register as registerOrgs } from "./commands/orgs.js";
@@ -12,7 +15,9 @@ import { register as registerStyleGuides } from "./commands/style-guides.js";
 import { register as registerApiKeys } from "./commands/api-keys.js";
 import { register as registerMembers } from "./commands/members.js";
 import { register as registerAuth } from "./commands/auth.js";
-import pkg from "../package.json" with { type: "json" };
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, "../package.json"), "utf-8"));
 
 const program = new Command();
 
