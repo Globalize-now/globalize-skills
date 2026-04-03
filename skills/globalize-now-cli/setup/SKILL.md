@@ -1,0 +1,98 @@
+---
+name: globalize-now-cli-setup
+description: >-
+  Set up the Globalize CLI for managing translation projects. Use this skill when the user
+  asks to set up Globalize, install the Globalize CLI, authenticate with Globalize, or
+  connect their project to the Globalize translation platform. Also use when the user
+  mentions @globalize-now/cli-client or globalise-now-cli. This skill handles installation
+  and authentication. It does NOT cover using the CLI to manage projects, languages, or
+  other resources — that's handled by globalize-now-cli-use.
+---
+
+# Globalize CLI Setup
+
+The Globalize CLI (`@globalize-now/cli-client`) lets AI agents manage translation projects, languages, glossaries, style guides, and repository connections on the [Globalize](https://globalize.now) platform.
+
+Follow these steps in order.
+
+---
+
+## Step 1: Detect the Environment
+
+Check the following before proceeding:
+
+| Signal | How to detect |
+|--------|--------------|
+| **Node.js** | `node --version` exits 0 and version >= 18. Required for the CLI. |
+| **Existing auth** | `~/.globalize/config.json` exists with an `apiKey` field, or `GLOBALIZE_API_KEY` env var is set. |
+| **Package manager** | `package-lock.json` → npm. `yarn.lock` → yarn. `pnpm-lock.yaml` → pnpm. `bun.lock` → bun. |
+
+If authentication is already configured, skip to Step 3 to verify.
+
+---
+
+## Step 2: Install
+
+No global install is needed. Run commands directly with npx:
+
+```bash
+npx @globalize-now/cli-client <command>
+```
+
+Or install globally if the user prefers:
+
+```bash
+npm install -g @globalize-now/cli-client
+```
+
+The binary name is `globalise-now-cli`.
+
+---
+
+## Step 3: Authenticate
+
+The CLI resolves credentials in this order:
+
+1. **`GLOBALIZE_API_KEY` environment variable** — best for CI/CD
+2. **`~/.globalize/config.json` config file** — best for local development
+3. **Interactive login** — prompts the user to paste an API key
+
+### If already authenticated
+
+Check with:
+
+```bash
+npx @globalize-now/cli-client auth status --json
+```
+
+If this returns a valid `source` and `key`, authentication is already configured. Skip to Step 4.
+
+### If not authenticated
+
+The `auth login` command is interactive — it prompts the user to paste an API key from [app.globalize.now/settings/api-keys](https://app.globalize.now/settings/api-keys). Since this requires stdin input, **tell the user to run it themselves**:
+
+```bash
+npx @globalize-now/cli-client auth login
+```
+
+The key is saved to `~/.globalize/config.json` for future use.
+
+---
+
+## Step 4: Verify
+
+Run both commands to confirm everything works:
+
+```bash
+npx @globalize-now/cli-client auth status --json
+```
+
+This should return JSON with `source`, `key` (prefix), and `api` (URL).
+
+Then verify API connectivity:
+
+```bash
+npx @globalize-now/cli-client orgs list --json
+```
+
+This should return the user's organisations. If it fails with an auth error, revisit Step 3.

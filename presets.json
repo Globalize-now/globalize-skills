@@ -6,5 +6,9 @@
   "css": {
     "description": "CSS internationalization (logical properties, RTL support)",
     "skills": ["css-i18n"]
+  },
+  "globalize-now-cli": {
+    "description": "Globalize CLI setup and usage",
+    "skills": ["globalize-now-cli-setup", "globalize-now-cli-use"]
   }
 }
