@@ -1,10 +1,9 @@
-import { createInterface } from "node:readline/promises";
 import chalk from "chalk";
 import type { Command } from "commander";
 import { readConfigFile, writeConfigFile, deleteConfigFile } from "../auth.js";
+import { generatePKCE, requestDeviceCode, pollForToken, openInBrowser, DeviceAuthError } from "../device-auth.js";
 import { output, type OutputOptions } from "../format.js";
 
-const SETTINGS_URL = "https://app.globalize.now/settings/api-keys";
 const DEFAULT_API_URL = "https://api.globalize.now";
 
 export function register(group: Command) {
@@ -14,20 +13,38 @@ export function register(group: Command) {
     .action(async () => {
       const apiUrl = process.env.GLOBALIZE_API_URL || DEFAULT_API_URL;
 
-      console.log(`\nCreate or copy an API key from: ${chalk.cyan(SETTINGS_URL)}\n`);
+      const { codeVerifier, codeChallenge } = generatePKCE();
 
-      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      let device;
       try {
-        const apiKey = (await rl.question("Paste your API key: ")).trim();
-        if (!apiKey) {
-          console.error(chalk.red("No API key provided."));
-          process.exitCode = 1;
-          return;
+        device = await requestDeviceCode(apiUrl, "cli", codeChallenge);
+      } catch (err) {
+        console.error(chalk.red(`Failed to start login: ${(err as Error).message}`));
+        process.exitCode = 1;
+        return;
+      }
+
+      console.log(`\nYour code: ${chalk.bold.cyan(device.user_code)}\n`);
+      console.log(`Opening ${chalk.cyan(device.verification_uri_complete)} in your browser…`);
+      console.log(chalk.dim("If the browser didn't open, visit the URL above manually.\n"));
+
+      openInBrowser(device.verification_uri_complete);
+
+      console.log(chalk.dim("Waiting for approval…"));
+
+      try {
+        const token = await pollForToken(apiUrl, device.device_code, codeVerifier, device.interval, device.expires_in);
+        await writeConfigFile({ apiKey: token.api_key, apiUrl });
+        console.log(
+          chalk.green(`\nLogged in to ${chalk.bold(token.org.name)}. API key saved to ~/.globalize/config.json`),
+        );
+      } catch (err) {
+        if (err instanceof DeviceAuthError) {
+          console.error(chalk.red(`\nLogin failed: ${err.message}`));
+        } else {
+          console.error(chalk.red(`\nLogin failed: ${(err as Error).message}`));
         }
-        await writeConfigFile({ apiKey, apiUrl });
-        console.log(chalk.green("API key saved to ~/.globalize/config.json"));
-      } finally {
-        rl.close();
+        process.exitCode = 1;
       }
     });
 
