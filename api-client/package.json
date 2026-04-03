@@ -28,6 +28,11 @@
     "commander": "^13.1.0",
     "openapi-fetch": "^0.13.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/globalize-now/globalize-skills.git",
+    "directory": "api-client"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.0.0",
