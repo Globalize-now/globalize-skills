@@ -125,25 +125,24 @@ export function LinguiClientProvider({
 
 **If no existing locale routing exists, STOP and present this to the user:**
 
-> To support locale-based URL routing in Next.js App Router, all pages need to move under a `[lang]/` dynamic segment. This is a significant structural change:
-> - Every URL changes (e.g., `/about` becomes `/en/about`)
-> - All internal links and `<Link>` hrefs must include the locale prefix
-> - External links, bookmarks, and SEO-indexed URLs break without redirects
+> To support multiple locales in Next.js App Router, pages move under a `[lang]/` dynamic segment. This is a significant structural change:
 > - The root layout moves from `src/app/layout.tsx` to `src/app/[lang]/layout.tsx`
-> - New middleware intercepts all requests to add locale prefixes
+> - All internal links and `<Link>` hrefs must include the locale prefix for non-source locales
+> - New middleware intercepts requests to handle locale routing
 >
-> Options:
-> 1. **Proceed with `[lang]` restructuring** — full locale-based URL routing
-> 2. **Skip locale routing for now** — set up LinguiJS with a hardcoded locale, no URL changes, add routing later
-> 3. **Show me the full impact first** — list every file that would be moved before deciding
+> Choose a routing strategy:
+> 1. **Unprefixed source locale** — source locale (e.g., English) keeps original URLs (`/about`). Other locales get prefixed (`/fr/about`, `/de/about`). Best for preserving existing SEO and link stability.
+> 2. **All locales prefixed** — every locale gets a prefix (`/en/about`, `/fr/about`). Bare paths (`/about`) permanently redirect (301) to the source locale (`/en/about`). Best for consistent URL structure.
+> 3. **Skip locale routing for now** — set up LinguiJS with a hardcoded locale, no URL changes, add routing later
+> 4. **Show me the full impact first** — list every file that would be moved before deciding
 
 **You MUST wait for the user to choose before proceeding. Do NOT default to option 1.**
 
 ---
 
-#### Option 1: Full `[lang]` restructuring
+#### Directory restructuring (Strategy 1 and 2)
 
-Move pages under a `[lang]` dynamic segment:
+Both strategies use the same `[lang]` directory structure — the difference is in middleware behavior (section 4). Move pages under a `[lang]` dynamic segment:
 
 ```
 src/app/
@@ -221,9 +220,9 @@ Note: `params` is `Promise<{ lang: string }>` in Next.js 15+. For Next.js 13-14,
 
 ---
 
-#### Option 2: Skip locale routing (hardcoded locale)
+#### Option 3: Skip locale routing (hardcoded locale)
 
-This approach adds LinguiJS without changing the URL structure. The app uses a single hardcoded locale. Locale routing can be added later by restructuring to option 1.
+This approach adds LinguiJS without changing the URL structure. The app uses a single hardcoded locale. Locale routing can be added later by restructuring to strategies 1 or 2.
 
 Modify the existing `src/app/layout.tsx` in place — do not move it:
 
@@ -267,10 +266,10 @@ With this approach:
 - Each page still loads its own catalog, but without a `lang` route param — use `DEFAULT_LOCALE` instead
 - Skip the "Locale Middleware" section (section 4 below)
 
-**Option 2 page example** — each page loads its catalog using the hardcoded locale:
+**Option 3 page example** — each page loads its catalog using the hardcoded locale:
 
 ```tsx
-// src/app/about/page.tsx (option 2 — no [lang] segment)
+// src/app/about/page.tsx (option 3 — no [lang] segment)
 import { setI18n } from '@lingui/react/server'
 import { Trans } from '@lingui/react/macro'
 import { getI18nInstance, loadPageCatalog } from '../appRouterI18n'
@@ -289,9 +288,9 @@ export default async function AboutPage() {
 
 ---
 
-#### Option 3: Show full impact
+#### Option 4: Show full impact
 
-List every file under `src/app/` that would need to move under `src/app/[lang]/`, and every file that references these paths (imports, links). Present the list and wait for the user to choose option 1 or option 2.
+List every file under `src/app/` that would need to move under `src/app/[lang]/`, and every file that references these paths (imports, links). Present the list and wait for the user to choose strategy 1, 2, or 3.
 
 ### Loading per-page catalogs
 
@@ -324,47 +323,27 @@ Each page must call `loadPageCatalog` and `setI18n` before rendering any transla
 
 ### 4. Locale Middleware
 
-**Only needed if the user chose option 1 (full `[lang]` restructuring).** If they chose option 2 (hardcoded locale), skip this section entirely.
+**Only needed if the user chose strategy 1 or 2.** If they chose option 3 (hardcoded locale), skip this section entirely.
 
 **If `src/middleware.ts` or `middleware.ts` already exists:** Read the existing middleware. Do NOT overwrite it. Instead:
 - If it already handles locale routing, adapt the locale detection logic to work with Lingui's locale list and move on.
 - If it handles other concerns (auth, headers, rewrites), you MUST merge the locale routing into the existing middleware rather than replacing it. Show the user the merged version and ask for confirmation before writing.
 - If the middleware is complex and you cannot safely merge, explain what it does and ask the user to review your proposed merge.
 
-**If no middleware exists**, create middleware to redirect bare paths to locale-prefixed paths. The middleware parses the `Accept-Language` header with quality values and tries regional fallback (e.g., `es-MX` → `es`) before falling back to the default locale. A `lang` cookie persists the user's explicit language choice (e.g., from a language picker) so it takes priority over browser settings.
+**If no middleware exists**, create the middleware variant that matches the user's chosen strategy.
 
-Note: `@lingui/detect-locale` is a client-side library — it's not used in middleware since this runs on the server. The cookie serves the same persistence purpose as `localStorage` in the Vite setup.
+Note: `@lingui/detect-locale` is a client-side library — it's not used in middleware since this runs on the server.
+
+#### Strategy 1 middleware: Unprefixed source locale
+
+Bare paths (`/about`) serve the source locale directly — the middleware rewrites the request internally to `/{sourceLocale}/about` without changing the URL. Prefixed paths (`/fr/about`) pass through unchanged. The user navigates between locales via a language picker that links to prefixed paths.
 
 ```ts
-// src/middleware.ts
+// src/middleware.ts — Strategy 1: unprefixed source locale
 import { NextRequest, NextResponse } from 'next/server'
 
 const locales = ['en', 'fr']  // adjust to match lingui.config.ts
-const defaultLocale = 'en'
-
-function resolveLocaleTag(tag: string): string | undefined {
-  if (locales.includes(tag)) return tag
-  const base = tag.split('-')[0]
-  if (locales.includes(base)) return base
-  return undefined
-}
-
-function resolveAcceptLanguage(header: string): string {
-  const entries = header
-    .split(',')
-    .map((part) => {
-      const [tag, q] = part.trim().split(';q=')
-      return { tag: tag.trim(), quality: q ? parseFloat(q) : 1.0 }
-    })
-    .sort((a, b) => b.quality - a.quality)
-
-  for (const { tag } of entries) {
-    const resolved = resolveLocaleTag(tag)
-    if (resolved) return resolved
-  }
-
-  return defaultLocale
-}
+const sourceLocale = 'en'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -375,14 +354,10 @@ export function middleware(request: NextRequest) {
 
   if (pathnameHasLocale) return
 
-  // Cookie from explicit user choice takes priority over browser settings
-  const cookieLocale = request.cookies.get('lang')?.value
-  const resolvedCookie = cookieLocale ? resolveLocaleTag(cookieLocale) : undefined
-  const detectedLocale =
-    resolvedCookie ?? resolveAcceptLanguage(request.headers.get('accept-language') ?? '')
-
-  request.nextUrl.pathname = `/${detectedLocale}${pathname}`
-  return NextResponse.redirect(request.nextUrl)
+  // Bare path — rewrite to source locale internally, URL stays unchanged
+  // /about → serves content from /en/about
+  request.nextUrl.pathname = `/${sourceLocale}${pathname}`
+  return NextResponse.rewrite(request.nextUrl)
 }
 
 export const config = {
@@ -390,7 +365,40 @@ export const config = {
 }
 ```
 
-To persist the user's language choice, set the `lang` cookie from a client component when the user switches locale (e.g., via a language picker): `document.cookie = 'lang=' + locale + ';path=/;max-age=31536000'`.
+With this strategy, `/about` always shows source locale content. Users switch languages via a language picker that navigates to `/fr/about`, `/de/about`, etc. There is no automatic language detection — each URL maps to exactly one language, which is ideal for SEO and caching.
+
+#### Strategy 2 middleware: All locales prefixed
+
+Every locale has a prefix (`/en/about`, `/fr/about`). Bare paths permanently redirect to the source locale. The 301 status is safe here because the redirect target is always the same (source locale), not detection-based.
+
+```ts
+// src/middleware.ts — Strategy 2: all locales prefixed
+import { NextRequest, NextResponse } from 'next/server'
+
+const locales = ['en', 'fr']  // adjust to match lingui.config.ts
+const sourceLocale = 'en'
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  const pathnameHasLocale = locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`,
+  )
+
+  if (pathnameHasLocale) return
+
+  // Bare path — permanent redirect to source locale prefix
+  // /about → 301 → /en/about
+  request.nextUrl.pathname = `/${sourceLocale}${pathname}`
+  return NextResponse.redirect(request.nextUrl, 301)
+}
+
+export const config = {
+  matcher: ['/((?!_next|api|favicon.ico).*)'],
+}
+```
+
+The 301 ensures search engines and browsers cache the redirect. Since the target is deterministic (always source locale), this won't cause issues with users who prefer a different language — they navigate to their locale via a language picker that links to `/fr/about`, `/de/about`, etc.
 
 ### Using translations in components
 

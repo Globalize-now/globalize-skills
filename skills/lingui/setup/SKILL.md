@@ -28,7 +28,7 @@ Follow these steps in order. Each builds on the last.
 | 2. Install packages | Additive | New dependencies only |
 | 3. Configure | Additive | New `lingui.config.ts` file |
 | 4. Build tool | **Modifies existing file** | Changes `vite.config` or `next.config` |
-| 5. Provider | **Modifies existing file** | Changes root layout / `main.tsx` |
+| 5. Provider | **Modifies existing file** | Routing strategy choice, changes root layout / `main.tsx`, may add middleware or new route files |
 | 6. ESLint | Additive | Already asks user |
 | 7. Scaffold | Additive | New catalog files |
 | 8. CI/CD | **Modifies existing file** | Changes build script — **optional, ask first** |
@@ -243,7 +243,7 @@ Follow the variant-specific reference file for this step. It tells you exactly h
 1. List the specific files you will modify and describe what changes you will make.
 2. Ask the user to confirm before proceeding.
 
-Follow the variant-specific reference file for this step. The provider pattern differs significantly between standard React apps (simple `I18nProvider` wrapper) and Next.js App Router (RSC-aware setup with `setI18n` + client provider + middleware).
+Follow the variant-specific reference file for this step. The reference file presents a **locale routing strategy choice** — wait for the user to choose before proceeding. The provider pattern differs significantly between standard React apps (simple `I18nProvider` wrapper) and Next.js App Router (RSC-aware setup with `setI18n` + client provider + middleware), and also depends on the chosen routing strategy.
 
 For **standard React apps** (Vite, CRA), the provider goes in:
 - `main.tsx` if the app has no router
