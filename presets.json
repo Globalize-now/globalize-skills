@@ -10,5 +10,9 @@
   "globalize-now-cli": {
     "description": "Globalize CLI setup and usage",
     "skills": ["globalize-now-cli-setup", "globalize-now-cli-use"]
+  },
+  "next-intl": {
+    "description": "next-intl internationalization for Next.js (setup and translate)",
+    "skills": ["next-intl-setup", "next-intl-translate"]
   }
 }

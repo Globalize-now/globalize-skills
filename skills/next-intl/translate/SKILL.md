@@ -1,0 +1,423 @@
+---
+name: next-intl-translate
+description: >-
+  Wrap hardcoded UI strings with next-intl translation functions in a Next.js
+  project that already has next-intl configured. Use this skill when the user
+  asks to "wrap strings", "translate the UI", "find hardcoded text",
+  "internationalize existing components", "add translations to components",
+  "detect localization gaps", "find untranslated strings", or "make the app
+  translatable". Also use when the user mentions missing useTranslations or
+  getTranslations usage in existing code. This is a one-time batch job. This
+  skill does NOT install packages or create config — run next-intl-setup first
+  if next-intl is not yet configured.
+---
+
+# next-intl String Wrapping
+
+This skill finds hardcoded user-facing strings and wraps them with next-intl translation functions. It also identifies localization gaps: numbers, currencies, dates, and plurals that need locale-aware handling.
+
+---
+
+## Step 1: Prerequisite Check
+
+Before wrapping anything, verify next-intl is configured:
+
+1. Check that `next-intl` is in `node_modules` (i.e., `npm ls next-intl` exits 0)
+2. Check that `next.config.*` uses `createNextIntlPlugin()` (import from `next-intl/plugin`)
+3. Check that message files exist in the `messages/` directory (e.g., `messages/en.json`)
+4. Check that `NextIntlClientProvider` is wired in the root layout (`app/layout.tsx` or `app/[locale]/layout.tsx`) or `_app.tsx`
+
+5. **Pages Router only:** Check that at least one page has `getStaticProps` or `getServerSideProps` returning `messages` in its props. Without this, `useTranslations` will silently return empty strings. Spot-check the most visited page (e.g., `pages/index.tsx`).
+
+If any check fails, stop and tell the user to run the `next-intl-setup` skill first. This skill never installs packages or modifies build configuration.
+
+---
+
+## Step 2: Detect the Project
+
+Read `package.json` and the directory structure to determine the project type:
+
+| Signal | How to detect |
+|--------|--------------|
+| **Framework** | `next` in deps → Next.js |
+| **Router** | `app/` directory with `layout.tsx` → App Router. `pages/` directory with `_app.tsx` → Pages Router. |
+| **TypeScript** | `typescript` in devDeps or `tsconfig.json` exists. |
+
+Examine existing message files (`messages/*.json`) to understand the current namespace structure — top-level keys represent namespaces, nested objects represent sub-namespaces.
+
+Based on detection, read the relevant reference file for framework-specific patterns:
+
+- **Next.js App Router** → read `references/nextjs-app-router.md`
+- **Next.js Pages Router** → read `references/nextjs-pages-router.md`
+
+Then continue with the steps below.
+
+---
+
+## Step 3: API Decision Tree
+
+Choose the right function for each situation:
+
+```
+Is this a Server Component (no 'use client' directive, in app/ directory)?
+  YES → getTranslations(namespace) from next-intl/server (async, must await)
+
+Is this a Client Component ('use client' directive)?
+  YES → useTranslations(namespace) from next-intl (hook)
+
+Need to format dates/numbers/relative time?
+  Server → getFormatter() from next-intl/server
+  Client → useFormatter() from next-intl
+
+Need current locale?
+  Server → getLocale() from next-intl/server
+  Client → useLocale() from next-intl
+
+Pages Router?
+  All components → useTranslations(namespace) from next-intl (hook)
+  Formatting → useFormatter() from next-intl
+```
+
+### Import reference table
+
+| Function | Import | Use case |
+|----------|--------|----------|
+| `useTranslations(ns)` | `next-intl` | Client component translations |
+| `getTranslations(ns)` | `next-intl/server` | Server component translations (async) |
+| `useFormatter()` | `next-intl` | Client date/number formatting |
+| `getFormatter()` | `next-intl/server` | Server date/number formatting |
+| `useLocale()` | `next-intl` | Client current locale |
+| `getLocale()` | `next-intl/server` | Server current locale |
+
+### Examples
+
+**Server Component (App Router):**
+```tsx
+import {getTranslations} from 'next-intl/server';
+
+// Before
+export default async function HomePage() {
+  return <h1>Welcome back</h1>;
+}
+
+// After
+export default async function HomePage() {
+  const t = await getTranslations('HomePage');
+  return <h1>{t('title')}</h1>;
+}
+```
+
+Note: `getTranslations` is async and must be awaited. If the component is not already `async`, make it `async` when adding `getTranslations`.
+
+**Client Component:**
+```tsx
+'use client';
+import {useTranslations} from 'next-intl';
+
+// Before
+export default function SearchBar() {
+  return <input placeholder="Search..." aria-label="Search" />;
+}
+
+// After
+export default function SearchBar() {
+  const t = useTranslations('Search');
+  return <input placeholder={t('placeholder')} aria-label={t('label')} />;
+}
+```
+
+**Formatting (Client Component):**
+```tsx
+import {useFormatter} from 'next-intl';
+
+// Before
+<span>{price.toFixed(2)} USD</span>
+<time>{date.toLocaleDateString()}</time>
+
+// After
+const format = useFormatter();
+<span>{format.number(price, {style: 'currency', currency: 'USD'})}</span>
+<time>{format.dateTime(date, {year: 'numeric', month: 'short', day: 'numeric'})}</time>
+```
+
+**Formatting (Server Component):**
+```tsx
+import {getFormatter} from 'next-intl/server';
+
+const format = await getFormatter();
+<p>{format.number(amount, {style: 'currency', currency: 'EUR'})}</p>
+```
+
+**Relative time:**
+```tsx
+import {useFormatter, useNow} from 'next-intl';
+
+const format = useFormatter();
+const now = useNow({updateInterval: 1000 * 60});
+<span>{format.relativeTime(date, now)}</span>
+```
+
+**Generating metadata (App Router):**
+```tsx
+import {getTranslations} from 'next-intl/server';
+
+export async function generateMetadata({params}: {params: Promise<{locale: string}>}) {
+  const {locale} = await params;
+  const t = await getTranslations({locale, namespace: 'Metadata'});
+  return {title: t('title'), description: t('description')};
+}
+```
+
+---
+
+## Step 4: Localization Gap Detection
+
+Scan files systematically for these patterns. Apply the confidence tiers to decide what to flag.
+
+### Always flag (high confidence)
+
+- **Bare JSX text**: Visible text between tags that is not wrapped in `{t('key')}`
+  ```tsx
+  <h1>Welcome</h1>                // <- flag
+  <h1>{t('title')}</h1>           // <- ok
+  ```
+
+- **User-visible attributes without `t()`**:
+  - `placeholder="..."` — input placeholder
+  - `aria-label="..."` — screen reader label
+  - `title="..."` — tooltip text
+  - `alt="..."` — image alt text (when descriptive, not decorative)
+
+- **Concatenated strings**: User-visible strings built from `+` or template literals
+  ```tsx
+  const msg = "Hello " + name + "!"  // <- flag, use t('greeting', {name}) instead
+  ```
+
+### Flag with judgment (medium confidence)
+
+Review these and translate only if they appear in the actual UI:
+
+- **`toFixed()` and number formatting**: Raw `toFixed()` won't respect locale decimal separators. Use `format.number()` instead.
+- **Currency symbols hardcoded near numbers**: `"$" + price` or `price + " USD"` — use `format.number(price, {style: 'currency', currency: 'USD'})`.
+- **Date formatting without locale**: `date.toLocaleDateString()` without a locale argument uses the runtime locale, which may be fine. Explicit format strings like `"MM/DD/YYYY"` are not locale-aware — use `format.dateTime()`.
+- **Toast and notification messages**: Often user-visible strings passed to a `toast()` or `notify()` call.
+- **Error messages shown to users**: Strings in `throw new Error(...)` that surface in the UI.
+
+### Never flag (skip these)
+
+- CSS class names: `className="text-red-500 font-bold"`
+- `console.log`, `console.error` strings
+- Import paths: `import ... from './components'`
+- Object keys and property names: `{ name: "foo" }`
+- Regex literals
+- Test IDs: `data-testid="submit-btn"`
+- `ALL_CAPS` constants used as enum values or internal codes: `STATUS = "ACTIVE"`
+- URL strings, API endpoints
+- Developer-facing error messages (not shown in the UI)
+
+---
+
+## Step 5: ICU Patterns in next-intl
+
+Message files (`messages/*.json`) use ICU MessageFormat. All translation values are ICU strings — the same syntax used by FormatJS and other ICU-based libraries.
+
+### Interpolation
+
+```json
+{"greeting": "Hello, {name}!"}
+```
+```tsx
+t('greeting', {name: user.name})
+```
+
+### Plurals
+
+```json
+{"items": "You have {count, plural, one {# item} other {# items}}"}
+```
+```tsx
+t('items', {count: items.length})
+```
+
+**The `#` placeholder** is replaced by the actual number. Do not write the variable name again — write `#`.
+
+### Exact numeric matches and ordinals
+
+Use `=0`, `=1`, `=2` for exact value matching: `{count, plural, =0 {No followers yet} =1 {One follower} other {# followers}}`. Use `selectordinal` for ordinals: `{year, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}`.
+
+### Select
+
+```json
+{"status": "{gender, select, male {He} female {She} other {They}} liked your post"}
+```
+```tsx
+t('status', {gender: user.gender})
+```
+
+### Rich text (HTML-like tags in messages)
+
+Rich text lets you embed React components inside translated strings using XML-like tags:
+
+```json
+{"terms": "By signing up you agree to our <link>terms</link>."}
+```
+```tsx
+t.rich('terms', {
+  link: (chunks) => <a href="/terms">{chunks}</a>
+})
+```
+
+Multiple tags work the same way — each tag name maps to a render function.
+
+Use `t.markup` instead of `t.rich` when you need an HTML string (e.g., for `dangerouslySetInnerHTML`) — the tag functions return strings instead of React elements.
+
+### Nested messages (dot notation)
+
+```json
+{
+  "auth": {
+    "login": {"title": "Sign in", "submit": "Log in"},
+    "register": {"title": "Create account"}
+  }
+}
+```
+```tsx
+const t = useTranslations('auth.login');
+t('title')   // "Sign in"
+t('submit')  // "Log in"
+```
+
+### CLDR plural categories
+
+English only uses `one` and `other`, but other languages have `zero`, `two`, `few`, `many`. Always include `other` — it is required and serves as the fallback. Translators will add the categories their language needs.
+
+### Top 5 ICU mistakes
+
+1. **Missing `other`**: Every plural/select expression must have `other`. Without it, formatting will fail at runtime.
+   ```
+   // Wrong
+   {count, plural, one {# item}}
+   // Right
+   {count, plural, one {# item} other {# items}}
+   ```
+
+2. **Using `zero` for English**: English has no `zero` CLDR category. Use `=0` for exact zero matching, or rely on `other` for zero counts.
+   ```
+   // Unnecessary CLDR category for English
+   {count, plural, zero {no items} one {# item} other {# items}}
+   // Use exact match if you want special zero text
+   {count, plural, =0 {No items} one {# item} other {# items}}
+   ```
+
+3. **Forgetting `#`**: The `#` is replaced by the count. Writing the variable name again is wrong.
+   ```
+   // Wrong
+   {count, plural, one {count item} other {count items}}
+   // Right
+   {count, plural, one {# item} other {# items}}
+   ```
+
+4. **Wrong category names**: CLDR categories are `zero`, `one`, `two`, `few`, `many`, `other` — not `singular`, `plural`, `multiple`.
+
+5. **Fragmenting plural branches into separate translation keys**: Each plural expression should be one message, not multiple separate ones.
+   ```tsx
+   // Wrong — two separate keys, broken grammar in many languages
+   const label = count === 1 ? t('itemSingular') : t('itemPlural')
+
+   // Right — one message with plural logic
+   // messages/en.json: {"items": "{count, plural, one {# item} other {# items}}"}
+   const label = t('items', {count})
+   ```
+
+---
+
+## Step 6: Namespace Strategy
+
+next-intl organizes translations by namespace — top-level keys in the messages JSON. Namespaces scope translations so each component only loads the keys it needs.
+
+### How namespaces work
+
+Top-level keys in `messages/*.json` are namespaces. `useTranslations('HomePage')` scopes to the `HomePage` key. Example structure:
+
+```json
+{
+  "HomePage": {"title": "Welcome", "subtitle": "Get started"},
+  "Navigation": {"home": "Home", "about": "About"},
+  "Common": {"save": "Save", "cancel": "Cancel"}
+}
+```
+
+### Namespace naming conventions
+
+- Match namespace to the component's domain: `HomePage`, `Navigation`, `Common`, `Auth`, `Dashboard`
+- Use PascalCase for namespace names (consistent with React component naming)
+- Keep to 1-2 levels of nesting — avoid deeply nested namespaces
+- Shared strings (buttons, labels, status text used across many pages) go in a `Common` namespace
+- Page-specific strings get their own namespace matching the page name
+
+### Sub-namespaces with dot notation
+
+Use nested objects and dot notation for related groups: `useTranslations('Auth.login')` scopes to `{"Auth": {"login": {...}}}`. Keep nesting to 1-2 levels.
+
+### Choosing a namespace for new strings
+
+1. Does this component already use `useTranslations('X')` or `getTranslations('X')`? → Add keys to namespace `X`.
+2. Is this a shared component used across pages? → Use `Common` or a domain-specific shared namespace.
+3. Is this a page component? → Create a namespace matching the page name (e.g., `Dashboard`, `Settings`).
+4. Is this a feature-specific component? → Use the feature name as namespace (e.g., `Cart`, `Checkout`).
+
+---
+
+## Step 7: Workflow
+
+Work file-by-file in this priority order:
+
+1. **Layout and shell components** (navbar, sidebar, footer) — highest reuse, translate first
+2. **Shared components** (buttons, modals, form fields) — reused across pages
+3. **Page/route components** — specific to one view
+4. **Utility files** with user-visible strings (constants, route configs, notification messages)
+
+Within each file, handle in this order:
+
+1. **Determine Server or Client Component** (App Router) — check for `'use client'` directive. No directive in `app/` directory means Server Component.
+2. **Import the appropriate function**:
+   - Server Component → `import {getTranslations} from 'next-intl/server'`
+   - Client Component → `import {useTranslations} from 'next-intl'`
+   - Pages Router → always `import {useTranslations} from 'next-intl'`
+3. **Choose or create a namespace** matching the component's domain (see Step 6)
+4. **Wrap strings** using `t('key')` for all user-facing text
+5. **Add corresponding keys** to `messages/{locale}.json` under the chosen namespace
+
+### Adding keys to message files
+
+When wrapping a string, add the key to every locale file. For the source locale, use the actual text. For other locales, copy the source text as a placeholder (to be translated later). Every locale file must have the same key structure.
+
+### Passing server-translated strings to Client Components
+
+In App Router, when a Client Component only needs a few static strings, prefer translating in the Server Component and passing strings as props — this avoids sending translation bundles to the client:
+
+```tsx
+// Server Component — translate here, pass as props
+const t = await getTranslations('Dashboard');
+<StatusBadge label={t('status')} />
+```
+
+If the Client Component needs many translations or handles dynamic content, use `useTranslations` directly — `NextIntlClientProvider` already sends messages to the client.
+
+### After batch wrapping
+
+1. **Check all locale files have the same keys** — every key in `messages/en.json` must exist in `messages/de.json`, `messages/fr.json`, etc. Missing keys will cause runtime warnings.
+2. **Run the dev server** — verify no missing key warnings in the console. next-intl logs warnings for missing messages by default.
+3. **Run existing tests** — if tests fail with missing provider errors, ensure the test setup wraps components with `NextIntlClientProvider`:
+   ```tsx
+   import {NextIntlClientProvider} from 'next-intl';
+
+   function renderWithIntl(ui: React.ReactElement, messages = {}) {
+     return render(
+       <NextIntlClientProvider locale="en" messages={messages}>
+         {ui}
+       </NextIntlClientProvider>
+     );
+   }
+   ```
+   The common fix: wrap test renders with `NextIntlClientProvider` providing `locale` and `messages` props.
