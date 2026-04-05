@@ -265,7 +265,7 @@ export function getDirection(locale: string): 'ltr' | 'rtl' {
 
 The `split('-')[0]` ensures regional variants like `ar-EG` resolve correctly. The reference files show where to place this helper and how to wire it for each variant:
 
-- **Next.js App Router**: Separate `getDirection.ts` file, used in the root layout to set `<html lang={lang} dir={direction}>`
+- **Next.js App Router**: Separate `getDirection.ts` file, used in the root layout to set `<html lang={locale} dir={direction}>`
 - **Vite (SWC / Babel)**: Inline in `src/i18n.ts`, sets `document.documentElement.dir` and `.lang` on locale activation
 
 ### `<html lang>` attribute migration

@@ -145,9 +145,9 @@ In Next.js App Router server components, get `i18n` from `getI18nInstance(locale
 // Server component — no 'use client'
 import { getI18nInstance } from '../appRouterI18n'
 
-export default async function PricePage({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = await params
-  const i18n = getI18nInstance(lang)
+export default async function PricePage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params
+  const i18n = getI18nInstance(locale)
   return <span>{i18n.number(42.5, { style: 'currency', currency: 'USD' })}</span>
 }
 ```

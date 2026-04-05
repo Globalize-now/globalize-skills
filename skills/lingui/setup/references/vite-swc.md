@@ -72,7 +72,7 @@ The setup depends on whether the project uses per-page catalogs (file-based rout
 **If the project uses file-based routing (TanStack Router, React Router), STOP and present this to the user:**
 
 > Choose a locale routing strategy:
-> 1. **Unprefixed source locale** — source locale (e.g., English) keeps original URLs (`/about`). Other locales use `/$lang/about` (e.g., `/fr/about`). Best for preserving existing URLs and SEO.
+> 1. **Unprefixed source locale** — source locale (e.g., English) keeps original URLs (`/about`). Other locales use `/$locale/about` (e.g., `/fr/about`). Best for preserving existing URLs and SEO.
 > 2. **All locales prefixed** — every locale gets a prefix (`/en/about`, `/fr/about`). Bare paths (`/about`) redirect to the source locale (`/en/about`). Cleanest structure, single route tree.
 > 3. **Skip locale routing** — use query param / localStorage / browser detection only, no URL path changes. Simplest setup.
 
@@ -80,9 +80,9 @@ The setup depends on whether the project uses per-page catalogs (file-based rout
 
 For plain SPAs without file-based routing, skip the routing choice — use option 3 (the single catalog setup at the end of this section).
 
-> **Note on Strategy 1 trade-off:** Client-side routers cannot rewrite URLs (serve different content while keeping the URL unchanged) the way server middleware can. Strategy 1 requires defining source locale routes at both `/about` and `/$lang/about`, resulting in some route file duplication. Shared page components avoid duplicating the actual UI code. Strategy 2 avoids this with a single route tree under `/$lang/`.
+> **Note on Strategy 1 trade-off:** Client-side routers cannot rewrite URLs (serve different content while keeping the URL unchanged) the way server middleware can. Strategy 1 requires defining source locale routes at both `/about` and `/$locale/about`, resulting in some route file duplication. Shared page components avoid duplicating the actual UI code. Strategy 2 avoids this with a single route tree under `/$locale/`.
 
-> **`lingui.config.ts` entries glob:** The default `entries` glob (`src/routes/**/*.tsx` for TanStack Router, `app/routes/**/*.tsx` for React Router) covers both unprefixed and `$lang/`-prefixed route files recursively — no glob changes needed for any strategy. Each route file gets its own co-located catalog regardless of whether it is prefixed or not.
+> **`lingui.config.ts` entries glob:** The default `entries` glob (`src/routes/**/*.tsx` for TanStack Router, `app/routes/**/*.tsx` for React Router) covers both unprefixed and `$locale/`-prefixed route files recursively — no glob changes needed for any strategy. Each route file gets its own co-located catalog regardless of whether it is prefixed or not.
 
 ---
 
@@ -92,7 +92,7 @@ For plain SPAs without file-based routing, skip the routing choice — use optio
 
 #### Strategy 1: Unprefixed source locale (per-page catalogs)
 
-Source locale routes live at `/about`, target locale routes at `/$lang/about`. The i18n setup reads the locale from the URL path:
+Source locale routes live at `/about`, target locale routes at `/$locale/about`. The i18n setup reads the locale from the URL path:
 
 ```ts
 // src/i18n.ts
@@ -133,8 +133,8 @@ src/
   routes/
     __root.tsx              ← I18nProvider
     about.tsx               ← /about (source locale)
-    $lang/
-      about.tsx             ← /$lang/about (target locales)
+    $locale/
+      about.tsx             ← /$locale/about (target locales)
 ```
 
 **TanStack Router:**
@@ -179,15 +179,15 @@ export const Route = createFileRoute('/about')({
 ```
 
 ```tsx
-// src/routes/$lang/about.tsx — target locales (prefixed)
+// src/routes/$locale/about.tsx — target locales (prefixed)
 import { createFileRoute } from '@tanstack/react-router'
 import { activateLocale } from '../../i18n'
 import { AboutPage } from '../../pages/About'
 
-export const Route = createFileRoute('/$lang/about')({
+export const Route = createFileRoute('/$locale/about')({
   beforeLoad: async ({ params }) => {
-    const { messages } = await import('./locales/about/' + params.lang + '.ts')
-    activateLocale(params.lang, messages)
+    const { messages } = await import('./locales/about/' + params.locale + '.ts')
+    activateLocale(params.locale, messages)
   },
   component: AboutPage,
 })
@@ -225,14 +225,14 @@ export default AboutPage
 ```
 
 ```tsx
-// app/routes/$lang/about.tsx — target locales (prefixed)
+// app/routes/$locale/about.tsx — target locales (prefixed)
 import type { Route } from './+types/about'
 import { activateLocale } from '../../i18n'
 import { AboutPage } from '../../pages/About'
 
 export async function loader({ params }: Route.LoaderArgs) {
-  const { messages } = await import('./locales/about/' + params.lang + '.ts')
-  activateLocale(params.lang, messages)
+  const { messages } = await import('./locales/about/' + params.locale + '.ts')
+  activateLocale(params.locale, messages)
   return null
 }
 
@@ -245,7 +245,7 @@ Each route loads its own co-located catalog. Shared component strings are duplic
 
 #### Strategy 2: All locales prefixed (per-page catalogs)
 
-All routes live under `/$lang/`. Bare paths redirect to the source locale. This is the cleanest structure — single route tree, no duplication:
+All routes live under `/$locale/`. Bare paths redirect to the source locale. This is the cleanest structure — single route tree, no duplication:
 
 ```ts
 // src/i18n.ts
@@ -280,8 +280,8 @@ export { i18n }
 ```
 src/routes/
   __root.tsx              ← I18nProvider + bare-path redirect
-  $lang/
-    about.tsx             ← /$lang/about (all locales)
+  $locale/
+    about.tsx             ← /$locale/about (all locales)
 ```
 
 **TanStack Router:**
@@ -310,15 +310,15 @@ export const Route = createRootRoute({
 ```
 
 ```tsx
-// src/routes/$lang/about.tsx
+// src/routes/$locale/about.tsx
 import { createFileRoute } from '@tanstack/react-router'
 import { Trans } from '@lingui/react/macro'
 import { activateLocale } from '../../i18n'
 
-export const Route = createFileRoute('/$lang/about')({
+export const Route = createFileRoute('/$locale/about')({
   beforeLoad: async ({ params }) => {
-    const { messages } = await import('./locales/about/' + params.lang + '.ts')
-    activateLocale(params.lang, messages)
+    const { messages } = await import('./locales/about/' + params.locale + '.ts')
+    activateLocale(params.locale, messages)
   },
   component: AboutPage,
 })
@@ -357,14 +357,14 @@ export default function RootLayout() {
 ```
 
 ```tsx
-// app/routes/$lang/about.tsx
+// app/routes/$locale/about.tsx
 import { Trans } from '@lingui/react/macro'
 import type { Route } from './+types/about'
 import { activateLocale } from '../../i18n'
 
 export async function loader({ params }: Route.LoaderArgs) {
-  const { messages } = await import('./locales/about/' + params.lang + '.ts')
-  activateLocale(params.lang, messages)
+  const { messages } = await import('./locales/about/' + params.locale + '.ts')
+  activateLocale(params.locale, messages)
   return null
 }
 
@@ -383,24 +383,24 @@ When locale routing is enabled, internal links must include the locale prefix.
 
 **TanStack Router** — do NOT wrap `<Link>`. TanStack Router's `<Link>` has deeply typed `to` and `params` props; wrapping it loses type safety. Instead, use the router's native API:
 
-Strategy 2 (all prefixed) — all routes are under `/$lang/`, so every `<Link>` already requires the `lang` param:
+Strategy 2 (all prefixed) — all routes are under `/$locale/`, so every `<Link>` already requires the `locale` param:
 
 ```tsx
 import { Link, useParams } from '@tanstack/react-router'
 
 function Navigation() {
-  const { lang } = useParams({ strict: false })
+  const { locale } = useParams({ strict: false })
 
   return (
     <nav>
-      <Link to="/$lang" params={{ lang }}>Home</Link>
-      <Link to="/$lang/about" params={{ lang }}>About</Link>
+      <Link to="/$locale" params={{ locale }}>Home</Link>
+      <Link to="/$locale/about" params={{ locale }}>About</Link>
     </nav>
   )
 }
 ```
 
-Strategy 1 (unprefixed source) — source locale routes don't have a `$lang` param, while target locale routes do. Links must point to the correct route variant:
+Strategy 1 (unprefixed source) — source locale routes don't have a `$locale` param, while target locale routes do. Links must point to the correct route variant:
 
 ```tsx
 import { Link, useParams } from '@tanstack/react-router'
@@ -408,8 +408,8 @@ import { SOURCE_LOCALE } from '../i18n'
 
 function Navigation() {
   const params = useParams({ strict: false })
-  const lang = (params as { lang?: string }).lang ?? SOURCE_LOCALE
-  const isSource = lang === SOURCE_LOCALE
+  const locale = (params as { locale?: string }).locale ?? SOURCE_LOCALE
+  const isSource = locale === SOURCE_LOCALE
 
   return (
     <nav>
@@ -420,8 +420,8 @@ function Navigation() {
         </>
       ) : (
         <>
-          <Link to="/$lang" params={{ lang }}>Home</Link>
-          <Link to="/$lang/about" params={{ lang }}>About</Link>
+          <Link to="/$locale" params={{ locale }}>Home</Link>
+          <Link to="/$locale/about" params={{ locale }}>About</Link>
         </>
       )}
     </nav>
@@ -429,7 +429,7 @@ function Navigation() {
 }
 ```
 
-This duplication is the trade-off of Strategy 1 with TanStack Router's type system — the router treats `/$lang/about` and `/about` as distinct routes with different param types. For apps with many navigation links, Strategy 2 is significantly simpler.
+This duplication is the trade-off of Strategy 1 with TanStack Router's type system — the router treats `/$locale/about` and `/about` as distinct routes with different param types. For apps with many navigation links, Strategy 2 is significantly simpler.
 
 **React Router** — `<Link to="...">` takes a plain string, so a path utility works cleanly:
 
@@ -438,19 +438,19 @@ This duplication is the trade-off of Strategy 1 with TanStack Router's type syst
 import { SOURCE_LOCALE } from './i18n'
 
 /** Build a locale-prefixed path. */
-export function localePath(lang: string, path: string): string {
+export function localePath(locale: string, path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`
-  return `/${lang}${normalized}`
+  return `/${locale}${normalized}`
 }
 ```
 
 Strategy 1 variant — only prefix non-source locales:
 
 ```ts
-export function localePath(lang: string, path: string): string {
+export function localePath(locale: string, path: string): string {
   const normalized = path.startsWith('/') ? path : `/${path}`
-  if (lang === SOURCE_LOCALE) return normalized
-  return `/${lang}${normalized}`
+  if (locale === SOURCE_LOCALE) return normalized
+  return `/${locale}${normalized}`
 }
 ```
 
@@ -464,13 +464,13 @@ import { localePath } from '../localePath'
 import { SOURCE_LOCALE } from '../i18n'
 
 function Navigation() {
-  const { lang } = useParams()
-  const currentLang = lang ?? SOURCE_LOCALE
+  const { locale } = useParams()
+  const currentLocale = locale ?? SOURCE_LOCALE
 
   return (
     <nav>
-      <Link to={localePath(currentLang, '/')}>Home</Link>
-      <Link to={localePath(currentLang, '/about')}>About</Link>
+      <Link to={localePath(currentLocale, '/')}>Home</Link>
+      <Link to={localePath(currentLocale, '/about')}>About</Link>
     </nav>
   )
 }
@@ -485,10 +485,10 @@ import { SOURCE_LOCALE } from '../i18n'
 
 function SearchForm() {
   const navigate = useNavigate()
-  const { lang } = useParams()
+  const { locale } = useParams()
 
   function onSubmit(query: string) {
-    navigate(localePath(lang ?? SOURCE_LOCALE, `/search?q=${encodeURIComponent(query)}`))
+    navigate(localePath(locale ?? SOURCE_LOCALE, `/search?q=${encodeURIComponent(query)}`))
   }
   // ...
 }
@@ -501,7 +501,7 @@ Tell the user:
 > Existing internal links need updating to include the locale prefix. Search for:
 > - `<Link to="/...">` — update to use the locale-aware pattern shown above
 > - `<a href="/...">` with internal paths — convert to router `<Link>` with locale handling
-> - `navigate("/...")` — use `localePath()` or pass `params: { lang }`
+> - `navigate("/...")` — use `localePath()` or pass `params: { locale }`
 >
 > Navigation components (headers, sidebars, footers) are the highest priority since they appear on every page.
 

@@ -21,7 +21,7 @@ In the App Router, `useLingui()` works in both server and client components when
 Server components can use `<Trans>` and `useLingui()`:
 
 ```tsx
-// app/[lang]/page.tsx — server component (no 'use client')
+// app/[locale]/page.tsx — server component (no 'use client')
 import { Trans, useLingui } from '@lingui/react/macro'
 
 export default async function HomePage() {
@@ -68,7 +68,7 @@ export function SearchBar() {
 `generateMetadata` runs as a server function. Use `getI18nInstance` (from the setup's `appRouterI18n.ts`) directly — not `useLingui()`, which is a hook.
 
 ```tsx
-// app/[lang]/settings/page.tsx
+// app/[locale]/settings/page.tsx
 import type { Metadata } from 'next'
 import { getI18nInstance } from '../../appRouterI18n'
 import { msg } from '@lingui/core/macro'
@@ -76,10 +76,10 @@ import { msg } from '@lingui/core/macro'
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ lang: string }>
+  params: Promise<{ locale: string }>
 }): Promise<Metadata> {
-  const { lang } = await params
-  const i18n = getI18nInstance(lang)
+  const { locale } = await params
+  const i18n = getI18nInstance(locale)
   return {
     title: i18n._(msg({ message: `Settings`, comment: "Settings page title" })),
     description: i18n._(msg`Manage your account settings`),
@@ -87,7 +87,7 @@ export async function generateMetadata({
 }
 ```
 
-For Next.js 13-14 (synchronous params): use `params: { lang: string }` without `await`.
+For Next.js 13-14 (synchronous params): use `params: { locale: string }` without `await`.
 
 ---
 
@@ -96,7 +96,7 @@ For Next.js 13-14 (synchronous params): use `params: { lang: string }` without `
 Components used in `layout.tsx` files may render on both server and client. Prefer `<Trans>` for text content — it avoids the client/server boundary question entirely.
 
 ```tsx
-// app/[lang]/layout.tsx — server component
+// app/[locale]/layout.tsx — server component
 import { Trans } from '@lingui/react/macro'
 
 function Header() {
@@ -154,7 +154,7 @@ export function Sidebar() {
 These special files are always client components in Next.js App Router. Use hooks freely:
 
 ```tsx
-// app/[lang]/loading.tsx
+// app/[locale]/loading.tsx
 'use client'
 import { Trans } from '@lingui/react/macro'
 
@@ -164,7 +164,7 @@ export default function Loading() {
 ```
 
 ```tsx
-// app/[lang]/error.tsx
+// app/[locale]/error.tsx
 'use client'
 import { Trans, useLingui } from '@lingui/react/macro'
 
@@ -210,10 +210,10 @@ import { getI18nInstance } from '@/i18n'
 export default async function PricePage({
   params,
 }: {
-  params: Promise<{ lang: string }>
+  params: Promise<{ locale: string }>
 }) {
-  const { lang } = await params
-  const i18n = getI18nInstance(lang)
+  const { locale } = await params
+  const i18n = getI18nInstance(locale)
   const price = i18n.number(29.99, { style: 'currency', currency: 'USD' })
   return <p><Trans>Price: {price}</Trans></p>
 }
@@ -222,5 +222,5 @@ export default async function PricePage({
 If you don't have an `i18n` instance (e.g. in utility functions), use `Intl.NumberFormat` / `Intl.DateTimeFormat` directly with a locale string:
 
 ```tsx
-const price = new Intl.NumberFormat(lang, { style: 'currency', currency: 'USD' }).format(29.99)
+const price = new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(29.99)
 ```
