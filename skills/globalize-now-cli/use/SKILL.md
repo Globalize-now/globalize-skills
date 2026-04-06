@@ -35,27 +35,35 @@ If this fails or reports no credentials, run the `globalize-now-cli-setup` skill
 
 This is the most common end-to-end workflow. Follow these sub-steps in order:
 
-### 2a. List available languages
+### 2a. Fetch and match available languages
 
-Find the language IDs for the project's source and target languages:
+Projects must be created using **language IDs** returned from the languages API. Before creating a project, fetch the catalog and match the user's desired languages against it.
+
+1. **Fetch the language catalog:**
 
 ```bash
 npx @globalize-now/cli-client languages list --json
 ```
 
+This returns an array of language objects, each with `id` (UUID), `name`, and `locale` (BCP 47 code).
+
+2. **Match desired languages against the catalog.** Compare the user's source and target locale codes (e.g., `en`, `fr`, `de`, `ja`) against the `locale` field in the returned list. Extract the corresponding `id` for each match.
+
+3. **Report unsupported languages.** If any of the user's desired languages do not appear in the catalog, inform the user which languages are unsupported and cannot be added to the project. Do not silently skip them — the user must acknowledge the gap before proceeding. Only continue with languages that have a matching catalog entry.
+
 ### 2b. Create a project
 
-Use the language IDs from 2a:
+Use the **language IDs** (UUIDs) matched in step 2a — not bare locale codes:
 
 ```bash
 npx @globalize-now/cli-client projects create \
   --name "My App" \
-  --source-language en \
-  --target-languages fr de ja \
+  --source-language <SOURCE_LANGUAGE_ID> \
+  --target-languages <TARGET_LANGUAGE_ID_1> <TARGET_LANGUAGE_ID_2> \
   --json
 ```
 
-`--target-languages` accepts space-separated or comma-separated values (`fr,de,ja` also works).
+`--target-languages` accepts space-separated or comma-separated values.
 
 Parse the returned JSON to extract the **project ID**.
 
@@ -245,7 +253,7 @@ npx @globalize-now/cli-client api-keys revoke --org-id <ORG_ID> --key-id <KEY_ID
 | `orgs create` | `--name` | |
 | `orgs delete` | `--id` | |
 | `projects list` | | |
-| `projects create` | `--name`, `--source-language`, `--target-languages` | |
+| `projects create` | `--name`, `--source-language` (ID), `--target-languages` (IDs) | |
 | `projects get` | `--id` | |
 | `projects delete` | `--id` | |
 | `languages list` | | |
@@ -278,4 +286,5 @@ npx @globalize-now/cli-client api-keys revoke --org-id <ORG_ID> --key-id <KEY_ID
 - **IDs are UUIDs**: All `--id`, `--project-id`, `--org-id`, etc. expect UUID values returned from prior create/list commands. Always capture these from JSON responses.
 - **Project language IDs vs global language IDs**: Glossary (`--source-language-id`, `--target-language-id`) and style guide (`--language-id`) commands use _project language_ UUIDs — the ID of a language within a specific project. Get these from `project-languages list`, not `languages list`.
 - **Repository providers**: `--provider` only accepts `github` or `gitlab`.
+- **Validate languages before project creation**: Always fetch `languages list --json` and match the user's desired locales against the catalog. Use the returned UUIDs for `--source-language` and `--target-languages` — do not pass raw locale codes. Inform the user about any unsupported languages that have no catalog match.
 - **Auth in non-interactive contexts**: The CLI does not fall back to interactive login when there's no TTY. Ensure `GLOBALIZE_API_KEY` is set or `~/.globalize/config.json` exists.
