@@ -28,3 +28,6 @@ export { listApiKeys, createApiKey, revokeApiKey } from "./commands/api-keys.js"
 
 // Members
 export { listMembers, inviteMember, removeMember } from "./commands/members.js";
+
+// GitHub
+export { startGithubInstall, pollGithubInstallStatus } from "./commands/github.js";
