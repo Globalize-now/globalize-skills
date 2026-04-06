@@ -13,7 +13,7 @@
     "dist/"
   ],
   "scripts": {
-    "generate": "openapi-typescript https://api.globalize.now/api/docs/json -o src/api-types.ts",
+    "generate": "openapi-typescript ${GLOBALIZE_API_URL:-https://api.globalize.now}/api/docs/json -o src/api-types.ts",
     "build": "npm run generate && tsc",
     "dev": "tsc --watch",
     "lint": "eslint src/ && prettier --check src/ && tsc --noEmit",
