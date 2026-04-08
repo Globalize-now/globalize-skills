@@ -21,3 +21,9 @@ export function detectAgents(dir) {
 }
 
 export const ALL_AGENTS = ["claude", "codex", "cursor"];
+
+export const AGENT_LABELS = {
+  claude: "Claude Code",
+  codex: "Codex",
+  cursor: "Cursor",
+};

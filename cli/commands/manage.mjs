@@ -1,6 +1,6 @@
 import { select, checkbox, Separator } from "@inquirer/prompts";
 import { listSkills, fetchSkill, fetchPresets } from "../lib/registry.mjs";
-import { detectAgents, ALL_AGENTS } from "../lib/detect.mjs";
+import { detectAgents, ALL_AGENTS, AGENT_LABELS } from "../lib/detect.mjs";
 import { promptScope, filterAgentsForScope } from "../lib/scope.mjs";
 import { detectInstalledSkills, uninstallSkill } from "../lib/installed.mjs";
 import { install as installClaude } from "../converters/claude.mjs";
@@ -11,12 +11,6 @@ const CONVERTERS = {
   claude: installClaude,
   codex: installCodex,
   cursor: installCursor,
-};
-
-const AGENT_LABELS = {
-  claude: "Claude Code",
-  codex: "Codex",
-  cursor: "Cursor",
 };
 
 export async function run() {

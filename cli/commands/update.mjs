@@ -1,5 +1,5 @@
 import { listSkills, fetchSkill } from "../lib/registry.mjs";
-import { detectAgents } from "../lib/detect.mjs";
+import { detectAgents, AGENT_LABELS } from "../lib/detect.mjs";
 import { resolveTargetDir, filterAgentsForScope } from "../lib/scope.mjs";
 import { detectInstalledSkills } from "../lib/installed.mjs";
 import { install as installClaude } from "../converters/claude.mjs";
@@ -10,12 +10,6 @@ const CONVERTERS = {
   claude: installClaude,
   codex: installCodex,
   cursor: installCursor,
-};
-
-const AGENT_LABELS = {
-  claude: "Claude Code",
-  codex: "Codex",
-  cursor: "Cursor",
 };
 
 function parseArgs(args) {
@@ -56,7 +50,7 @@ export async function run(args = []) {
 
   if (agents.length === 0) {
     console.error("No supported agents for the selected scope.");
-    process.exit(1);
+    return;
   }
 
   console.log(`Updating ${installed.size} skill(s) (fetching latest from GitHub)...\n`);
