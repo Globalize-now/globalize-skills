@@ -8,9 +8,17 @@ Install globalization skills for AI coding agents (Claude Code, Codex, Cursor).
 npx globalize-skills
 ```
 
-Running without arguments starts an interactive wizard that walks you through selecting and installing skills.
+Running without arguments starts an interactive session where you can add and remove skills. Already-installed skills are pre-selected.
 
 ## Commands
+
+### `manage`
+
+Interactively add and remove skills. Detects what's already installed and pre-checks those in the selection list. Deselecting a skill removes it.
+
+```bash
+npx globalize-skills manage
+```
 
 ### `add`
 
@@ -46,12 +54,19 @@ npx globalize-skills list
 
 ### `update`
 
-Update installed skills to the latest version. Accepts the same arguments and options as `add`.
+Update all installed skills to the latest version. Auto-detects installed skills and refreshes them from GitHub.
 
 ```bash
-npx globalize-skills update lingui-setup
-npx globalize-skills update --preset lingui
+npx globalize-skills update
+npx globalize-skills update --target /path/to/project
+npx globalize-skills update --agent claude
 ```
+
+| Option                | Description                                                                    |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `--agent <name>`      | Target agent: `claude`, `codex`, `cursor`, or `all` (auto-detected by default) |
+| `--repo <owner/repo>` | Use a different GitHub repository                                              |
+| `--target <path>`     | Target directory (defaults to current directory)                               |
 
 ## Agent Detection
 
