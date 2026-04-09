@@ -21,9 +21,43 @@ export async function createRepository(
   branches?: string[],
   localePathPattern?: string,
   githubInstallationId?: string,
+  prTranslations?: boolean,
+  skipDraftPrs?: boolean,
 ) {
   const { data, error, response } = await client.POST("/api/repositories", {
-    body: { projectId, gitUrl, provider, branches, localePathPattern, githubInstallationId },
+    body: {
+      projectId,
+      gitUrl,
+      provider,
+      branches,
+      localePathPattern,
+      githubInstallationId,
+      prTranslations,
+      skipDraftPrs,
+    },
+  });
+  if (error) throw new Error(extractError(response, error));
+  return data!;
+}
+
+export async function updateRepository(
+  client: ApiClient,
+  id: string,
+  updates: {
+    gitUrl?: string;
+    branches?: string[];
+    localePathPattern?: string | null;
+    githubInstallationId?: string;
+    provider?: "github" | "gitlab";
+    fileFormat?: string;
+    detectedFramework?: string | null;
+    prTranslations?: boolean;
+    skipDraftPrs?: boolean;
+  },
+) {
+  const { data, error, response } = await client.PATCH("/api/repositories/{id}", {
+    params: { path: { id } },
+    body: updates,
   });
   if (error) throw new Error(extractError(response, error));
   return data!;
@@ -69,6 +103,8 @@ export function register(group: Command, getClient: ClientFactory): void {
     .option("--branches <branches...>", "Branches to track")
     .option("--locale-path-pattern <pattern>", "Locale path pattern")
     .option("--github-installation-id <id>", "GitHub App installation ID")
+    .option("--pr-translations", "Enable PR translations")
+    .option("--skip-draft-prs", "Skip draft pull requests")
     .action(async (cmdOpts, cmd) => {
       const opts: OutputOptions = cmd.optsWithGlobals();
       try {
@@ -82,9 +118,46 @@ export function register(group: Command, getClient: ClientFactory): void {
             cmdOpts.branches,
             cmdOpts.localePathPattern,
             cmdOpts.githubInstallationId,
+            cmdOpts.prTranslations,
+            cmdOpts.skipDraftPrs,
           ),
           opts,
         );
+      } catch (e) {
+        outputError((e as Error).message, opts);
+      }
+    });
+
+  group
+    .command("update")
+    .description("Update a repository")
+    .requiredOption("--id <id>", "Repository UUID")
+    .option("--git-url <url>", "Git repository URL")
+    .option("--branches <branches...>", "Branches to track")
+    .option("--locale-path-pattern <pattern>", "Locale path pattern")
+    .option("--github-installation-id <id>", "GitHub App installation ID")
+    .addOption(new Option("--provider <provider>", "Git provider").choices(["github", "gitlab"]))
+    .option("--file-format <format>", "File format")
+    .option("--detected-framework <framework>", "Detected framework")
+    .option("--pr-translations", "Enable PR translations")
+    .option("--no-pr-translations", "Disable PR translations")
+    .option("--skip-draft-prs", "Skip draft pull requests")
+    .option("--no-skip-draft-prs", "Do not skip draft pull requests")
+    .action(async (cmdOpts, cmd) => {
+      const opts: OutputOptions = cmd.optsWithGlobals();
+      try {
+        const client = await getClient();
+        const updates: Record<string, unknown> = {};
+        if (cmdOpts.gitUrl !== undefined) updates.gitUrl = cmdOpts.gitUrl;
+        if (cmdOpts.branches !== undefined) updates.branches = cmdOpts.branches;
+        if (cmdOpts.localePathPattern !== undefined) updates.localePathPattern = cmdOpts.localePathPattern;
+        if (cmdOpts.githubInstallationId !== undefined) updates.githubInstallationId = cmdOpts.githubInstallationId;
+        if (cmdOpts.provider !== undefined) updates.provider = cmdOpts.provider;
+        if (cmdOpts.fileFormat !== undefined) updates.fileFormat = cmdOpts.fileFormat;
+        if (cmdOpts.detectedFramework !== undefined) updates.detectedFramework = cmdOpts.detectedFramework;
+        if (cmdOpts.prTranslations !== undefined) updates.prTranslations = cmdOpts.prTranslations;
+        if (cmdOpts.skipDraftPrs !== undefined) updates.skipDraftPrs = cmdOpts.skipDraftPrs;
+        output(await updateRepository(client, cmdOpts.id, updates), opts);
       } catch (e) {
         outputError((e as Error).message, opts);
       }

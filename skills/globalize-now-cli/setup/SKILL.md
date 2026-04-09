@@ -46,7 +46,7 @@ After Step 1 (detection) completes without blockers, ask the user:
 - [x] Step 3: Authenticate — {auth method}
 - [x] Step 4: Verify — {org name}
 - [x] Step 5: Create Project — "{name}" (source: {source}, targets: {targets})
-- [x] Step 6: Connect Repository — {owner/repo} connected, locale pattern: {pattern or "not detected"}
+- [x] Step 6: Connect Repository — {owner/repo} connected, locale pattern: {pattern or "not detected"}, PR translations: {enabled/disabled}, skip drafts: {enabled/disabled}
 
 ### Warnings (if any)
 - {e.g., Uncommitted changes detected — i18n detection used remote code only}
@@ -64,6 +64,8 @@ After Step 1 (detection) completes without blockers, ask the user:
 - **Source language**: detected from existing i18n config (`sourceLocale`, `defaultLocale`, `lng`). If not detected, default to `en`.
 - **Target languages**: detected from existing i18n config (remaining locales after excluding source). If not detected, ask the user.
 - **Locale path pattern**: detected from i18n config or directory structure (e.g., `locales/{locale}/{namespace}.json`). Falls back to server-side detection via `github detect` in Step 6. Never ask the user.
+- **PR translations**: enabled by default. Never ask.
+- **Skip draft PRs**: enabled by default. Never ask.
 
 If no localization setup is detected at all (non-localized project), ask the user for source and target languages before proceeding to Step 5.
 
@@ -340,7 +342,18 @@ npx @globalize-now/cli-client github detect \
 
 The response includes `localePathPattern` (string or null), `discoveredFiles`, and `framework`. Use `localePathPattern` if present. If not, proceed without it — the flag is optional.
 
-### 6f. Connect the repository
+### 6f. Configure PR translation settings
+
+- **Guided**: ask the user:
+  > **PR translation settings:**
+  > 1. **Enable PR translations?** — Globalize will translate new/changed strings found in pull requests. (default: yes)
+  > 2. **Skip draft PRs?** — Globalize will not translate strings in draft pull requests. (default: yes)
+
+  Use the user's answers to set the `--pr-translations` and `--skip-draft-prs` flags in 6g.
+
+- **Unguided**: enable both by default — always pass `--pr-translations --skip-draft-prs`.
+
+### 6g. Connect the repository
 
 ```bash
 npx @globalize-now/cli-client repositories create \
@@ -349,16 +362,20 @@ npx @globalize-now/cli-client repositories create \
   --provider github \
   --github-installation-id <INSTALLATION_ID> \
   --locale-path-pattern "<LOCALE_PATH_PATTERN>" \
+  --pr-translations \
+  --skip-draft-prs \
   --json
 ```
 
 If no locale path pattern was detected (neither in Step 1 nor in 6e), omit the `--locale-path-pattern` flag.
 
+If the user chose to disable PR translations in guided mode (6f), omit `--pr-translations`. If the user chose not to skip drafts, omit `--skip-draft-prs`.
+
 In guided mode: if a pattern was detected, show it to the user and ask for confirmation before proceeding.
 
 Parse the returned JSON to extract the **repository ID**.
 
-### 6g. Detect i18n configuration
+### 6h. Detect i18n configuration
 
 After connecting, run detection to discover i18n patterns in the repository:
 

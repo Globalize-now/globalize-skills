@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClient } from "@globalize-now/cli-client";
-import { listRepositories, createRepository, deleteRepository, detectRepository } from "@globalize-now/cli-client";
+import {
+  listRepositories,
+  createRepository,
+  updateRepository,
+  deleteRepository,
+  detectRepository,
+} from "@globalize-now/cli-client";
 import { formatSuccess, formatError } from "../helpers.js";
 
 export function registerRepositoryTools(server: McpServer, client: ApiClient) {
@@ -32,11 +38,51 @@ export function registerRepositoryTools(server: McpServer, client: ApiClient) {
         provider: z.enum(["github", "gitlab"]).describe("Git provider"),
         branches: z.array(z.string()).optional().describe('Branches to sync (defaults to ["main"])'),
         localePathPattern: z.string().optional().describe("Path pattern for locale files in the repo"),
+        prTranslations: z.boolean().optional().describe("Enable PR translations"),
+        skipDraftPrs: z.boolean().optional().describe("Skip draft pull requests"),
       },
     },
-    async ({ projectId, gitUrl, provider, branches, localePathPattern }) => {
+    async ({ projectId, gitUrl, provider, branches, localePathPattern, prTranslations, skipDraftPrs }) => {
       try {
-        return formatSuccess(await createRepository(client, projectId, gitUrl, provider, branches, localePathPattern));
+        return formatSuccess(
+          await createRepository(
+            client,
+            projectId,
+            gitUrl,
+            provider,
+            branches,
+            localePathPattern,
+            undefined,
+            prTranslations,
+            skipDraftPrs,
+          ),
+        );
+      } catch (e) {
+        return formatError(e);
+      }
+    },
+  );
+
+  server.registerTool(
+    "update_repository",
+    {
+      description: "Update a connected repository's settings",
+      inputSchema: {
+        id: z.string().uuid().describe("Repository UUID"),
+        gitUrl: z.string().optional().describe("Git repository URL"),
+        branches: z.array(z.string()).optional().describe("Branches to track"),
+        localePathPattern: z.string().nullable().optional().describe("Locale path pattern"),
+        githubInstallationId: z.string().optional().describe("GitHub App installation ID"),
+        provider: z.enum(["github", "gitlab"]).optional().describe("Git provider"),
+        fileFormat: z.string().optional().describe("File format"),
+        detectedFramework: z.string().nullable().optional().describe("Detected framework"),
+        prTranslations: z.boolean().optional().describe("Enable PR translations"),
+        skipDraftPrs: z.boolean().optional().describe("Skip draft pull requests"),
+      },
+    },
+    async ({ id, ...updates }) => {
+      try {
+        return formatSuccess(await updateRepository(client, id, updates));
       } catch (e) {
         return formatError(e);
       }

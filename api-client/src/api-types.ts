@@ -7999,6 +7999,8 @@ export interface paths {
                             fileFormat: string;
                             active: boolean;
                             detectedFramework: string | null;
+                            prTranslations: boolean;
+                            skipDraftPrs: boolean;
                         }[];
                     };
                 };
@@ -8146,6 +8148,10 @@ export interface paths {
                         /** @default json-flat */
                         fileFormat?: string;
                         detectedFramework?: string | null;
+                        /** @default false */
+                        prTranslations?: boolean;
+                        /** @default false */
+                        skipDraftPrs?: boolean;
                     };
                 };
             };
@@ -8168,6 +8174,8 @@ export interface paths {
                             fileFormat: string;
                             active: boolean;
                             detectedFramework: string | null;
+                            prTranslations: boolean;
+                            skipDraftPrs: boolean;
                         };
                     };
                 };
@@ -8328,6 +8336,8 @@ export interface paths {
                             fileFormat: string;
                             active: boolean;
                             detectedFramework: string | null;
+                            prTranslations: boolean;
+                            skipDraftPrs: boolean;
                         };
                     };
                 };
@@ -8499,6 +8509,8 @@ export interface paths {
                         /** @default json-flat */
                         fileFormat?: string;
                         detectedFramework?: string | null;
+                        prTranslations?: boolean;
+                        skipDraftPrs?: boolean;
                     };
                 };
             };
@@ -8521,6 +8533,8 @@ export interface paths {
                             fileFormat: string;
                             active: boolean;
                             detectedFramework: string | null;
+                            prTranslations: boolean;
+                            skipDraftPrs: boolean;
                         };
                     };
                 };

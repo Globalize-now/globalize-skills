@@ -156,7 +156,7 @@ npx @globalize-now/cli-client repositories create \
   --json
 ```
 
-Optional flags: `--branches <branches...>` to track specific branches, `--locale-path-pattern <pattern>` to specify where locale files live.
+Optional flags: `--branches <branches...>` to track specific branches, `--locale-path-pattern <pattern>` to specify where locale files live, `--pr-translations` to enable PR translations, `--skip-draft-prs` to skip draft pull requests.
 
 Parse the returned JSON to extract the **repository ID**.
 
@@ -343,7 +343,8 @@ npx @globalize-now/cli-client api-keys revoke --org-id <ORG_ID> --key-id <KEY_ID
 | `project-languages add` | `--project-id`, `--name`, `--locale` | `--language-id` |
 | `project-languages remove` | `--project-id`, `--language-id` | |
 | `repositories list` | `--project-id` | |
-| `repositories create` | `--project-id`, `--git-url`, `--provider` | `--branches`, `--locale-path-pattern`, `--github-installation-id` |
+| `repositories create` | `--project-id`, `--git-url`, `--provider` | `--branches`, `--locale-path-pattern`, `--github-installation-id`, `--pr-translations`, `--skip-draft-prs` |
+| `repositories update` | `--id` | `--git-url`, `--branches`, `--locale-path-pattern`, `--github-installation-id`, `--provider`, `--file-format`, `--detected-framework`, `--pr-translations` / `--no-pr-translations`, `--skip-draft-prs` / `--no-skip-draft-prs` |
 | `repositories delete` | `--id` | |
 | `repositories detect` | `--id` | |
 | `github install` | | `--no-wait` |

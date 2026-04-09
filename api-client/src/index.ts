@@ -15,7 +15,13 @@ export { listLanguages, getLanguage } from "./commands/languages.js";
 export { listProjectLanguages, addProjectLanguage, removeProjectLanguage } from "./commands/project-languages.js";
 
 // Repositories
-export { listRepositories, createRepository, deleteRepository, detectRepository } from "./commands/repositories.js";
+export {
+  listRepositories,
+  createRepository,
+  updateRepository,
+  deleteRepository,
+  detectRepository,
+} from "./commands/repositories.js";
 
 // Glossary
 export { listGlossary, createGlossaryEntry, deleteGlossaryEntry } from "./commands/glossary.js";
