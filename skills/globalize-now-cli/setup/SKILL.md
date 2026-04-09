@@ -99,7 +99,7 @@ Scan for known i18n config files to auto-detect source and target languages. Use
 
 **Detection priority**: Config files (explicit locale lists) take precedence over directory/file scanning (inferred locales).
 
-**Source vs target**: The source language is the `sourceLocale` / `defaultLocale` / `lng` from config. All other locales in the list are target languages.
+**Source vs target**: The source language is the `sourceLocale` / `defaultLocale` / `lng` from config. All other locales in the list are target languages. **Always exclude the source locale from the target list.**
 
 If none of the above signals are found, record "no localization setup detected."
 
@@ -229,7 +229,7 @@ Use the locales detected in Step 1:
 - **i18n config found** (LinguiJS, next-intl, i18next, react-intl): use the detected source locale and target locales.
   - Guided: confirm the detected languages with the user before proceeding.
   - Unguided: proceed with detected values.
-- **Locale directories/files found but no config**: infer locales from directory or file names. Default the source language to `en` if present in the list.
+- **Locale directories/files found but no config**: infer locales from directory or file names. Default the source language to `en` if present in the list. Remove the source locale from the target list.
   - Guided: confirm with the user.
   - Unguided: proceed with inferred values.
 - **Nothing detected** (non-localized project):
@@ -244,6 +244,7 @@ npx @globalize-now/cli-client languages list --json
 
 Match the detected or provided locale codes against the `locale` field in the returned list. Extract the UUID `id` for each match.
 
+- **Source locale in target list**: if the source locale appears in the target list, remove it. The source language must never be added as a target language.
 - If the **source language** has no match in the catalog: **HARD STOP** in both modes. The project cannot be created without a valid source language.
 - If a **target language** has no match: guided mode informs the user and asks how to proceed; unguided mode skips that language and notes it in the summary.
 
