@@ -82,7 +82,7 @@ Check the following before proceeding:
 | **Package manager** | `package-lock.json` → npm. `yarn.lock` → yarn. `pnpm-lock.yaml` → pnpm. `bun.lock` → bun. |
 | **Git repository** | `git rev-parse --is-inside-work-tree` exits 0. |
 | **Git remote URL** | `git remote get-url origin` — record the URL. If no remote named `origin`, record as absent. |
-| **GitHub repo** | Parse the remote URL for `github.com`. Extract `<OWNER>` and `<REPO>` from HTTPS (`https://github.com/OWNER/REPO.git`) or SSH (`git@github.com:OWNER/REPO.git`) format. |
+| **GitHub repo** | Parse the remote URL for `github.com`. Extract `<OWNER>` and `<REPO>` from HTTPS (`https://github.com/OWNER/REPO.git`) or SSH (`git@github.com:OWNER/REPO.git`) format. **Important:** The CLI only accepts HTTPS URLs for `--git-url`. If the remote is SSH, convert to HTTPS: `https://github.com/<OWNER>/<REPO>.git`. |
 | **Uncommitted changes** | `git status --porcelain` — non-empty output means uncommitted changes exist. |
 | **Unpushed commits** | `git log @{u}..HEAD --oneline 2>/dev/null` — non-empty output means unpushed commits. Fails gracefully if no upstream is set. |
 
@@ -292,7 +292,7 @@ Check for existing installations:
 npx @globalize-now/cli-client github installations --json
 ```
 
-If an installation's `account.login` matches `<OWNER>` (case-insensitive): use its `id` as `<INSTALLATION_ID>` and skip to 6d.
+Each installation has an `id` (a **numeric** GitHub installation ID, e.g. `122432012`) and an `account` with `login`. If an installation's `account.login` matches `<OWNER>` (case-insensitive): use its `id` as `<INSTALLATION_ID>` and skip to 6d.
 
 If no matching installation, start the install flow:
 

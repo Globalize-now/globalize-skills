@@ -84,6 +84,8 @@ If the command fails (no remote named `origin`), **STOP.** Tell the user: "No gi
 - HTTPS: `https://github.com/<OWNER>/<REPO>.git`
 - SSH: `git@github.com:<OWNER>/<REPO>.git`
 
+Store the URL as `<GIT_URL>`. **Important:** The CLI only accepts HTTPS URLs for `--git-url`. If the remote is an SSH URL, convert it to HTTPS format: `https://github.com/<OWNER>/<REPO>.git`.
+
 If the URL does not contain `github.com`, **STOP.** Tell the user: "Globalize currently only supports GitHub repositories. The detected remote URL (`<URL>`) does not appear to be a GitHub repo." Do NOT proceed.
 
 **3. CONSENT GATE — Confirm repository details with the user. You MUST complete this step before proceeding.**
@@ -110,7 +112,7 @@ Wait for the user's response before proceeding.
 npx @globalize-now/cli-client github installations --json
 ```
 
-This returns an array of installations. Each has an `id` and an `account` with `login` (the GitHub org or user name).
+This returns an array of installations. Each has an `id` (a **numeric** GitHub installation ID, e.g. `122432012`) and an `account` with `login` (the GitHub org or user name).
 
 **4b. Match installation to repo owner:**
 
@@ -179,6 +181,8 @@ npx @globalize-now/cli-client repositories detect \
   --id <REPO_ID> \
   --json
 ```
+
+**Note:** Both detection commands run against remote code on GitHub, not the local working copy. If the user has uncommitted or unpushed changes that affect locale files, detection will not reflect those changes. Inform the user if this applies.
 
 ---
 
@@ -371,7 +375,7 @@ npx @globalize-now/cli-client api-keys revoke --org-id <ORG_ID> --key-id <KEY_ID
 ## Common Gotchas
 
 - **Always use `--json`**: The CLI auto-detects non-TTY and outputs JSON, but always pass `--json` explicitly when running programmatically for reliability.
-- **IDs are UUIDs**: All `--id`, `--project-id`, `--org-id`, etc. expect UUID values returned from prior create/list commands. Always capture these from JSON responses.
+- **IDs are UUIDs (except installation IDs)**: All `--id`, `--project-id`, `--org-id`, etc. expect UUID values returned from prior create/list commands. The exception is `--installation-id` and `--github-installation-id`, which expect the **numeric GitHub installation ID** (e.g. `122432012`) from `github installations --json`, not a Globalize UUID. Always capture IDs from JSON responses.
 - **Project language IDs vs global language IDs**: Glossary (`--source-language-id`, `--target-language-id`) and style guide (`--language-id`) commands use _project language_ UUIDs — the ID of a language within a specific project. Get these from `project-languages list`, not `languages list`.
 - **GitHub App required for GitHub repos**: When connecting a GitHub repository, use the GitHub App flow (`github installations` / `github install`) to obtain an `installationId` and pass it via `--github-installation-id` on `repositories create`. Without this, Globalize cannot access repo contents. Use `github install --no-wait --json` to get the install URL without blocking, present it to the user, then check completion with `github install-status --nonce <NONCE> --json`.
 - **GitHub only**: Globalize currently only supports GitHub repositories. Always use `--provider github` with `--github-installation-id` when connecting repos.
