@@ -124,6 +124,23 @@ During detection, also determine the **locale file path pattern** — a path tem
 
 If no pattern can be determined locally, record as absent — Step 6 will attempt server-side detection.
 
+### File format
+
+When a locale path pattern is determined, also determine the **file format**. The `fileFormat` value must be one of: `json-flat`, `json-nested`, `xliff`, `xliff-2`, `xliff-1.2`, `yaml`, `po`.
+
+| Source | fileFormat value |
+|--------|----------------|
+| **LinguiJS** | `po` |
+| **next-intl** | `json-nested` (next-intl uses nested key structure) |
+| **i18next** | `json-nested` by default. If `keySeparator: false` in config, use `json-flat`. |
+| **react-intl** | Inspect file content (see JSON detection below) |
+| **`.po` / `.pot` files** | `po` |
+| **`.xliff` files** | `xliff` — if you can inspect the file, check the `version` attribute: `2.0` → `xliff-2`, `1.2` → `xliff-1.2` |
+| **`.yaml` / `.yml` files** | `yaml` |
+| **`.json` files** | Inspect content: if all top-level values are strings (`{"greeting": "Hello", "bye": "Goodbye"}`), use `json-flat`. If top-level values contain objects (`{"home": {"greeting": "Hello"}}`), use `json-nested`. |
+
+If the file format cannot be determined locally, record as absent — Step 6 server-side detection may provide it.
+
 ### Detection outcomes
 
 If authentication is already configured, skip to Step 3 to verify.
@@ -294,7 +311,7 @@ Check for existing installations:
 npx @globalize-now/cli-client github installations --json
 ```
 
-Each installation has `id` (a **UUID** — Globalize's internal installation record), `installationId` (the **numeric** GitHub installation ID, e.g. `122432012`), `accountLogin` (the GitHub org or user name), and `accountType`. Match `accountLogin` against `<OWNER>` (case-insensitive). Use the UUID `id` as `<INSTALLATION_ID>` for `--github-installation-id`.
+Each installation has `id` (a **UUID** — Globalize's internal installation record), `installationId` (the **numeric** GitHub installation ID, e.g. `122432012`), `accountLogin` (the GitHub org or user name), and `accountType`. Match `accountLogin` against `<OWNER>` (case-insensitive). Capture **both** IDs: use the numeric `installationId` as `<GITHUB_INSTALLATION_ID>` (for `github repos/branches/detect --installation-id`) and the UUID `id` as `<INSTALLATION_UUID>` (for `repositories create --github-installation-id`).
 
 If no matching installation, start the install flow:
 
@@ -317,7 +334,7 @@ After the user confirms, verify:
 npx @globalize-now/cli-client github install-status --nonce <NONCE> --json
 ```
 
-This returns `{ "status": "completed", "installationId": "...", "accountLogin": "..." }` when done, `{ "status": "pending" }` if the user hasn't finished yet, or `{ "status": "expired" }` if the nonce expired. Check `status === "completed"`. If not completed, ask the user to try again. Once completed, re-run `github installations --json` to get the `<INSTALLATION_ID>` for the target owner.
+This returns `{ "status": "completed", "installationId": "...", "accountLogin": "..." }` when done, `{ "status": "pending" }` if the user hasn't finished yet, or `{ "status": "expired" }` if the nonce expired. Check `status === "completed"`. If not completed, ask the user to try again. Once completed, re-run `github installations --json` to get `<GITHUB_INSTALLATION_ID>` (numeric `installationId`) and `<INSTALLATION_UUID>` (UUID `id`) for the target owner.
 
 ### 6c-gitlab. Set up GitLab Connection
 
@@ -356,7 +373,7 @@ Once completed, use `connectionId` as `<CONNECTION_ID>`.
 ### 6d. Verify repository access (GitHub)
 
 ```bash
-npx @globalize-now/cli-client github repos --installation-id <INSTALLATION_ID> --json
+npx @globalize-now/cli-client github repos --installation-id <GITHUB_INSTALLATION_ID> --json
 ```
 
 Confirm that `<OWNER>/<REPO>` appears in the returned list. If not:
@@ -391,7 +408,7 @@ If the provider is GitHub and Step 1 did not determine a locale path pattern, us
 
 ```bash
 npx @globalize-now/cli-client github detect \
-  --installation-id <INSTALLATION_ID> \
+  --installation-id <GITHUB_INSTALLATION_ID> \
   --owner <OWNER> \
   --repo <REPO> \
   --json
@@ -410,7 +427,7 @@ npx @globalize-now/cli-client repositories create \
   --project-id <PROJECT_ID> \
   --git-url <GIT_URL> \
   --provider github \
-  --github-installation-id <INSTALLATION_ID> \
+  --github-installation-id <INSTALLATION_UUID> \
   --patterns '[{"pattern": "<LOCALE_PATH_PATTERN>", "fileFormat": "<FORMAT>"}]' \
   --json
 ```
@@ -426,6 +443,8 @@ npx @globalize-now/cli-client repositories create \
   --patterns '[{"pattern": "<LOCALE_PATH_PATTERN>", "fileFormat": "<FORMAT>"}]' \
   --json
 ```
+
+`<FORMAT>` must be exactly one of: `json-flat`, `json-nested`, `xliff`, `xliff-2`, `xliff-1.2`, `yaml`, `po`. Do not use other values (e.g. `json` alone is invalid). Refer to the "File format" table in Step 1 for how to determine the correct value.
 
 If no patterns were detected (neither in Step 1 nor in 6d-gitlab/6e), omit the `--patterns` flag. The `--import-mode` and `--import-scope` flags are optional (default to `ignore` and `new_keys_only`).
 

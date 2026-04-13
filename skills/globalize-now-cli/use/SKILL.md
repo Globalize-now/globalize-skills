@@ -124,9 +124,9 @@ This returns an array of installations. Each has `id` (a **UUID** — Globalize'
 
 **4b. Match installation to repo owner:**
 
-Look for an installation whose `accountLogin` matches `<OWNER>` (case-insensitive). Use its `id` (UUID) as `<INSTALLATION_ID>`.
+Look for an installation whose `accountLogin` matches `<OWNER>` (case-insensitive). Capture **both** IDs: the numeric `installationId` as `<GITHUB_INSTALLATION_ID>` (for `github repos/branches/detect --installation-id`) and the UUID `id` as `<INSTALLATION_UUID>` (for `repositories create --github-installation-id`).
 
-- **Match found** → use its `id` as `<INSTALLATION_ID>`, skip to sub-step 4d.
+- **Match found** → capture both IDs, skip to sub-step 4d.
 - **No match** → proceed to sub-step 4c.
 
 **4c. Install the GitHub App (requires user interaction):**
@@ -145,12 +145,12 @@ npx @globalize-now/cli-client github install-status --nonce <NONCE> --json
 
 This returns `{ "status": "completed", "installationId": "...", "accountLogin": "..." }` when done, `{ "status": "pending" }` if the user hasn't finished yet, or `{ "status": "expired" }` if the nonce expired. Check `status === "completed"`. If not completed, ask the user to confirm they finished and retry.
 
-After completion, run `github installations --json` again to find the `<INSTALLATION_ID>` for the target owner.
+After completion, run `github installations --json` again to find `<GITHUB_INSTALLATION_ID>` (numeric `installationId`) and `<INSTALLATION_UUID>` (UUID `id`) for the target owner.
 
 **4d. Verify repo access:**
 
 ```bash
-npx @globalize-now/cli-client github repos --installation-id <INSTALLATION_ID> --json
+npx @globalize-now/cli-client github repos --installation-id <GITHUB_INSTALLATION_ID> --json
 ```
 
 Confirm that `<OWNER>/<REPO>` appears in the returned list. If not, the GitHub App may not have access to this specific repository — inform the user they need to adjust the installation's repository access settings on GitHub.
@@ -162,7 +162,7 @@ npx @globalize-now/cli-client repositories create \
   --project-id <PROJECT_ID> \
   --git-url <GIT_URL> \
   --provider github \
-  --github-installation-id <INSTALLATION_ID> \
+  --github-installation-id <INSTALLATION_UUID> \
   --json
 ```
 
@@ -240,7 +240,7 @@ For **GitHub repos**, you can detect i18n structure via the GitHub App:
 
 ```bash
 npx @globalize-now/cli-client github detect \
-  --installation-id <INSTALLATION_ID> \
+  --installation-id <GITHUB_INSTALLATION_ID> \
   --owner <OWNER> \
   --repo <REPO> \
   --json
@@ -535,7 +535,7 @@ npx @globalize-now/cli-client gitlab detect --connection-id <ID> --project-id <P
 ## Common Gotchas
 
 - **Always use `--json`**: The CLI auto-detects non-TTY and outputs JSON, but always pass `--json` explicitly when running programmatically for reliability.
-- **IDs are UUIDs**: All `--id`, `--project-id`, `--org-id`, etc. expect UUID values returned from prior create/list commands. `--github-installation-id` now expects a **UUID** (Globalize's internal installation record ID, from the `id` field in `github installations --json`). The numeric GitHub installation ID is available as `installationId` in the same response but is NOT what you pass to `repositories create`. Always capture IDs from JSON responses.
+- **IDs are UUIDs (except `--installation-id`)**: All `--id`, `--project-id`, `--org-id`, etc. expect UUID values returned from prior create/list commands. **Two different installation ID flags exist — they take different value types.** `--installation-id` (used by `github repos`, `github branches`, `github detect`) expects the **numeric** GitHub installation ID (the `installationId` field from `github installations --json`, e.g. `122432012`). `--github-installation-id` (used by `repositories create/update`) expects the **UUID** (the `id` field from `github installations --json`). Always capture both IDs from the JSON response.
 - **Project language IDs vs global language IDs**: Glossary (`--source-language-id`, `--target-language-id`) and style guide (`--language-id`) commands use _project language_ UUIDs — the ID of a language within a specific project. Get these from `project-languages list`, not `languages list`.
 - **GitHub App required for GitHub repos**: When connecting a GitHub repository, use the GitHub App flow (`github installations` / `github install`) to obtain an installation ID and pass it via `--github-installation-id` on `repositories create`. Without this, Globalize cannot access repo contents. Use `github install --no-wait --json` to get the install URL without blocking, present it to the user, then check completion with `github install-status --nonce <NONCE> --json`.
 - **Patterns are managed separately**: After creating a repository, manage locale path patterns via `patterns list/create/update/delete/reorder`. The `--patterns` flag on `repositories create` is only for initial setup. Pattern changes after creation require the pattern CRUD commands.
