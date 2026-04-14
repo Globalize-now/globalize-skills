@@ -214,6 +214,7 @@ Review these and translate only if they appear in the actual UI:
 - `ALL_CAPS` constants used as enum values or internal codes: `STATUS = "ACTIVE"`
 - URL strings, API endpoints
 - Developer-facing error messages (not shown in the UI)
+- Long-form prose content: article bodies, blog post text, documentation paragraphs, changelogs, legal copy (terms of service, privacy policy). These are content, not UI — they require a content localization strategy (per-locale files, CMS translation), not string wrapping. Still wrap UI elements in the same files (buttons, labels, navigation, form fields).
 
 ---
 
