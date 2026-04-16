@@ -375,6 +375,42 @@ i18n: {
 }
 ```
 
+## SEO: Alternate Language Tags
+
+hreflang tags tell search engines which locale variants exist for each page. In Pages Router, use `next/head` with `useRouter` to render them. Create a reusable component:
+
+```tsx
+import { useRouter } from 'next/router'
+import Head from 'next/head'
+
+export function AlternateLanguageTags() {
+  const { locales, asPath, defaultLocale } = useRouter()
+  const pathname = asPath.split('?')[0]
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+
+  return (
+    <Head>
+      {locales?.map((locale) => (
+        <link
+          key={locale}
+          rel="alternate"
+          hrefLang={locale}
+          href={`${siteUrl}/${locale}${pathname}`}
+        />
+      ))}
+      <link
+        rel="alternate"
+        hrefLang="x-default"
+        href={`${siteUrl}/${defaultLocale}${pathname}`}
+      />
+    </Head>
+  )
+}
+```
+
+- Place `<AlternateLanguageTags />` in `_app.tsx` so it applies to every page automatically.
+- `NEXT_PUBLIC_SITE_URL` must be set in the environment without a trailing slash (e.g., `https://example.com`) — hreflang requires absolute URLs.
+
 ## Using Translations
 
 All components in Pages Router are client components — there is no server/client distinction.
