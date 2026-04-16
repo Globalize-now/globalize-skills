@@ -2,15 +2,20 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import { readConfigFile, writeConfigFile, deleteConfigFile } from "../auth.js";
 import { generatePKCE, requestDeviceCode, pollForToken, openInBrowser, DeviceAuthError } from "../device-auth.js";
-import { output, type OutputOptions } from "../format.js";
+import { output, outputError, type OutputOptions } from "../format.js";
 
 const DEFAULT_API_URL = "https://api.globalize.now";
+const DEFAULT_POLL_INTERVAL = 5;
+const DEFAULT_EXPIRES_IN = 900;
 
 export function register(group: Command) {
   group
     .command("login")
     .description("Authenticate with the Globalize API")
-    .action(async () => {
+    .option("--no-wait", "Print device code info and exit without polling (for agents)")
+    .action(async (_cmdOpts, cmd) => {
+      const opts: OutputOptions = cmd.optsWithGlobals();
+      const noWait = cmd.opts().wait === false;
       const apiUrl = process.env.GLOBALIZE_API_URL || DEFAULT_API_URL;
 
       const { codeVerifier, codeChallenge } = generatePKCE();
@@ -21,6 +26,21 @@ export function register(group: Command) {
       } catch (err) {
         console.error(chalk.red(`Failed to start login: ${(err as Error).message}`));
         process.exitCode = 1;
+        return;
+      }
+
+      if (noWait) {
+        output(
+          {
+            user_code: device.user_code,
+            verification_uri_complete: device.verification_uri_complete,
+            device_code: device.device_code,
+            code_verifier: codeVerifier,
+            expires_in: device.expires_in,
+            interval: device.interval,
+          },
+          opts,
+        );
         return;
       }
 
@@ -49,6 +69,28 @@ export function register(group: Command) {
           console.error(chalk.red(`\nLogin failed: ${(err as Error).message}`));
         }
         process.exitCode = 1;
+      }
+    });
+
+  group
+    .command("complete")
+    .description("Complete a pending device auth flow (used after login --no-wait)")
+    .requiredOption("--device-code <code>", "Device code from login --no-wait")
+    .requiredOption("--code-verifier <verifier>", "PKCE code verifier from login --no-wait")
+    .option("--interval <seconds>", "Poll interval in seconds", String(DEFAULT_POLL_INTERVAL))
+    .option("--expires-in <seconds>", "Seconds until code expires", String(DEFAULT_EXPIRES_IN))
+    .action(async (_cmdOpts, cmd) => {
+      const opts: OutputOptions = cmd.optsWithGlobals();
+      const { deviceCode, codeVerifier, interval, expiresIn } = cmd.opts();
+      const apiUrl = process.env.GLOBALIZE_API_URL || DEFAULT_API_URL;
+
+      try {
+        const token = await pollForToken(apiUrl, deviceCode, codeVerifier, Number(interval), Number(expiresIn));
+        await writeConfigFile({ apiKey: token.api_key, apiUrl });
+        output({ org: token.org.name, status: "authenticated" }, opts);
+      } catch (err) {
+        const message = err instanceof DeviceAuthError ? err.message : (err as Error).message;
+        outputError(`Login failed: ${message}`, opts);
       }
     });
 

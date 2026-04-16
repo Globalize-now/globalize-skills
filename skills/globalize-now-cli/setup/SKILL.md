@@ -189,19 +189,52 @@ If this returns a valid `source` and `key`, authentication is already configured
 
 ### If not authenticated
 
-Run the login command:
+Start the device authorization flow in non-blocking mode:
 
 ```bash
-npx @globalize-now/cli-client auth login
+npx @globalize-now/cli-client auth login --no-wait --json
 ```
 
-This starts a device authorization flow:
-1. The CLI prints a **user code** and a **verification URL**
-2. In an interactive terminal, it opens the URL in the browser automatically
-3. In a non-interactive terminal (e.g. agent), it prints the URL for the user to visit
-4. The user approves in the browser, and the CLI automatically saves the API key to `~/.globalize/config.json`
+This returns the device code info without waiting for approval:
 
-Show the verification URL to the user and ask them to approve in the browser. Once approved, the CLI saves the key automatically.
+```json
+{
+  "data": {
+    "user_code": "ABCD-1234",
+    "verification_uri_complete": "https://...",
+    "device_code": "...",
+    "code_verifier": "...",
+    "expires_in": 900,
+    "interval": 5
+  }
+}
+```
+
+Present the `verification_uri_complete` URL and `user_code` to the user and ask them to open the URL in their browser and approve.
+
+Once the user confirms they have approved, complete the authentication:
+
+```bash
+npx @globalize-now/cli-client auth complete \
+  --device-code <DEVICE_CODE> \
+  --code-verifier <CODE_VERIFIER> \
+  --json
+```
+
+On success this saves the API key to `~/.globalize/config.json` and returns:
+
+```json
+{
+  "data": {
+    "org": "...",
+    "status": "authenticated"
+  }
+}
+```
+
+If the user hasn't approved yet, the command will poll until they do or the code expires.
+
+> **Note:** In an interactive terminal, `auth login` (without `--no-wait`) runs the full flow automatically — it opens the browser, waits for approval, and saves the key. Use `--no-wait` + `auth complete` when running as an agent.
 
 ---
 
