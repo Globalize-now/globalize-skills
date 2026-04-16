@@ -332,14 +332,15 @@ Show the user the exact merged version and ask for confirmation before writing.
 
 ## Step 7: Provider and Layout
 
-The App Router uses a two-layout pattern: a root layout for the `<html>` tag and a locale layout for the provider.
+The App Router uses a two-layout pattern: a root layout for the `<html>` tag and provider, and a locale layout for locale validation and static rendering.
 
 ### Root layout: `app/layout.tsx`
 
-The root layout provides the `<html>` tag with the dynamic `lang` attribute:
+The root layout provides the `<html>` tag with the dynamic `lang` attribute and wraps all children with `NextIntlClientProvider`. This ensures every route — including root-level routes like `not-found.tsx` and `error.tsx` that live outside `[locale]` — has access to translations.
 
 ```tsx
-import {getLocale} from 'next-intl/server';
+import {NextIntlClientProvider} from 'next-intl';
+import {getLocale, getMessages} from 'next-intl/server';
 
 type Props = {
   children: React.ReactNode;
@@ -347,10 +348,15 @@ type Props = {
 
 export default async function RootLayout({children}: Props) {
   const locale = await getLocale();
+  const messages = await getMessages();
 
   return (
     <html lang={locale}>
-      <body>{children}</body>
+      <body>
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
+      </body>
     </html>
   );
 }
@@ -361,7 +367,8 @@ export default async function RootLayout({children}: Props) {
 **RTL support:** For applications supporting RTL locales (Arabic, Hebrew, Farsi, etc.), add a `dir` attribute:
 
 ```tsx
-import {getLocale} from 'next-intl/server';
+import {NextIntlClientProvider} from 'next-intl';
+import {getLocale, getMessages} from 'next-intl/server';
 
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur', 'ps', 'sd', 'yi']);
 
@@ -371,10 +378,15 @@ function getDirection(locale: string): 'ltr' | 'rtl' {
 
 export default async function RootLayout({children}: {children: React.ReactNode}) {
   const locale = await getLocale();
+  const messages = await getMessages();
 
   return (
     <html lang={locale} dir={getDirection(locale)}>
-      <body>{children}</body>
+      <body>
+        <NextIntlClientProvider messages={messages}>
+          {children}
+        </NextIntlClientProvider>
+      </body>
     </html>
   );
 }
@@ -382,7 +394,7 @@ export default async function RootLayout({children}: {children: React.ReactNode}
 
 ### Locale layout: `app/[locale]/layout.tsx`
 
-The locale layout wraps children with `NextIntlClientProvider` so client components can access translations:
+The locale layout validates the locale parameter, enables static rendering, and provides `NextIntlClientProvider` with the correct locale. The root layout above has a provider too (for root-level routes like `not-found.tsx`), but this inner provider takes precedence via React context and supplies the accurate locale from the URL:
 
 ```tsx
 import {NextIntlClientProvider, hasLocale} from 'next-intl';
@@ -406,7 +418,6 @@ export default async function LocaleLayout({children, params}: Props) {
   // Enable static rendering
   setRequestLocale(locale);
 
-  // Load all messages for the current locale
   const messages = await getMessages();
 
   return (

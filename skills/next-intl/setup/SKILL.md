@@ -606,18 +606,18 @@ The component should:
 - Switch locale using the navigation helpers from Step 10
 - Be styled to blend with the project's existing UI
 
-**Styling**: Before writing the component, examine the project's styling approach and existing navigation/header:
+**Styling**: The language switcher must look polished and fit into the style of the website. Before writing the component:
 1. Detect the CSS methodology — Tailwind CSS, CSS Modules, styled-components, Emotion, plain CSS, or inline styles
 2. Look at the existing header, navbar, or navigation component where the switcher will be placed
-3. Style the switcher using the same approach and visual patterns (font sizes, colors, spacing, border styles) so it looks native to the site
+3. Make the switcher look pretty and match the project's visual design — use the same font sizes, colors, spacing, border styles, and component patterns so it feels native to the site
 
-If you cannot determine the project's styling approach, use the inline-styled baseline from the reference file.
+The switcher should look like the developer built it as part of the original design, not like an afterthought. Do not use the baseline inline styles from the reference file if the project has a detectable styling approach.
 
 Follow the variant-specific reference file for this step. It provides the component implementation and wiring instructions for your router type. Adapt the styling from the reference to use the project's CSS approach.
 
 After creating the component, import and render it in a visible location — typically the root layout or a shared navigation/header component. The switcher should be accessible from every page.
 
-**After wiring the switcher**, tell the user: _"I've added a language switcher styled to match your existing UI. Please review the component and customise its appearance, position, and locale display names as you see fit."_
+**After wiring the switcher**, tell the user: _"I've added a language switcher using [name the CSS approach you used, e.g. Tailwind CSS] to match your existing UI. Please review the component and customise its appearance, position, and locale display names as you see fit."_
 
 ---
 
