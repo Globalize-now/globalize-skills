@@ -585,6 +585,7 @@ export function LanguageSwitcher() {
   const params = useParams()
   const pathname = usePathname()
   const currentLocale = (params?.locale as string) ?? sourceLocale
+  const displayNames = new Intl.DisplayNames([currentLocale], {type: 'language'})
 
   // Strip locale prefix to get the base path
   let basePath = pathname
@@ -600,17 +601,24 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div style={{display: 'flex', gap: '8px'}}>
+    <nav style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
       {locales.map((loc) => (
         <Link
           key={loc}
           href={loc === sourceLocale ? basePath : `/${loc}${basePath}`}
-          style={{fontWeight: loc === currentLocale ? 'bold' : 'normal'}}
+          style={{
+            padding: '0.25rem 0.5rem',
+            borderRadius: '0.25rem',
+            textDecoration: 'none',
+            color: 'inherit',
+            fontWeight: loc === currentLocale ? 600 : 400,
+            backgroundColor: loc === currentLocale ? 'rgba(0, 0, 0, 0.06)' : 'transparent',
+          }}
         >
-          {loc}
+          {displayNames.of(loc) ?? loc}
         </Link>
       ))}
-    </div>
+    </nav>
   )
 }
 ```
@@ -631,6 +639,7 @@ export function LanguageSwitcher() {
   const params = useParams()
   const pathname = usePathname()
   const currentLocale = params?.locale as string
+  const displayNames = new Intl.DisplayNames([currentLocale], {type: 'language'})
 
   // Strip locale prefix to get the base path
   let basePath = pathname
@@ -646,17 +655,24 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div style={{display: 'flex', gap: '8px'}}>
+    <nav style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
       {locales.map((loc) => (
         <Link
           key={loc}
           href={`/${loc}${basePath}`}
-          style={{fontWeight: loc === currentLocale ? 'bold' : 'normal'}}
+          style={{
+            padding: '0.25rem 0.5rem',
+            borderRadius: '0.25rem',
+            textDecoration: 'none',
+            color: 'inherit',
+            fontWeight: loc === currentLocale ? 600 : 400,
+            backgroundColor: loc === currentLocale ? 'rgba(0, 0, 0, 0.06)' : 'transparent',
+          }}
         >
-          {loc}
+          {displayNames.of(loc) ?? loc}
         </Link>
       ))}
-    </div>
+    </nav>
   )
 }
 ```
@@ -683,14 +699,7 @@ import { LanguageSwitcher } from './LanguageSwitcher'
 
 The `LanguageSwitcher` sits outside the `LinguiClientProvider` because it doesn't use any Lingui macros — it only handles navigation. If the project has a shared header or navigation component, place the switcher there instead.
 
-**Displaying locale names**: The examples above render raw locale codes (`en`, `fr`). For a better user experience, use `Intl.DisplayNames` to show locale names in the user's language:
-
-```tsx
-const displayNames = new Intl.DisplayNames([currentLocale], {type: 'language'});
-
-// In the Link:
-{displayNames.of(loc) ?? loc}
-```
+**Styling**: The examples use inline styles as a baseline. Adapt the styling to match the project's CSS approach (Tailwind, CSS Modules, etc.) and the visual style of the surrounding navigation.
 
 ### Using translations in components
 

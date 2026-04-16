@@ -804,16 +804,29 @@ export default function LanguageSwitcher() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const displayNames = new Intl.DisplayNames([locale], {type: 'language'});
 
   function onSelectChange(event: React.ChangeEvent<HTMLSelectElement>) {
     router.replace(pathname, {locale: event.target.value});
   }
 
   return (
-    <select value={locale} onChange={onSelectChange}>
+    <select
+      value={locale}
+      onChange={onSelectChange}
+      style={{
+        padding: '0.375rem 0.5rem',
+        borderRadius: '0.375rem',
+        border: '1px solid #d1d5db',
+        backgroundColor: 'transparent',
+        fontSize: 'inherit',
+        fontFamily: 'inherit',
+        cursor: 'pointer',
+      }}
+    >
       {routing.locales.map((loc) => (
         <option key={loc} value={loc}>
-          {loc}
+          {displayNames.of(loc) ?? loc}
         </option>
       ))}
     </select>
@@ -828,6 +841,9 @@ This uses `router.replace()` instead of `router.push()` so the locale switch doe
 - `usePathname()` from `@/i18n/navigation` returns the path **without** the locale prefix, so it works correctly across locales
 - `useRouter()` from `@/i18n/navigation` handles locale-prefixed routing automatically
 - `routing.locales` is the single source of truth for the locale list — no hardcoded arrays
+- `Intl.DisplayNames` renders locale names in the user's current language (e.g. "Deutsch" when viewing in German)
+
+**Styling**: The example uses inline styles as a baseline. Adapt the styling to match the project's CSS approach (Tailwind, CSS Modules, etc.) and the visual style of the surrounding navigation.
 
 **Wiring**: Import into the locale layout or a shared navigation component. The switcher must be inside the `NextIntlClientProvider` tree (it uses client-side hooks).
 
@@ -844,29 +860,3 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 ```
 
 Or in a shared header/navigation component if one exists.
-
-**Displaying locale names**: The example uses raw locale codes (`en`, `de`). For a better user experience, map codes to display names:
-
-```tsx
-const localeNames: Record<string, string> = {
-  en: 'English',
-  de: 'Deutsch',
-  fr: 'Français',
-};
-
-// In the <option>:
-<option key={loc} value={loc}>
-  {localeNames[loc] ?? loc}
-</option>
-```
-
-Or use `Intl.DisplayNames` for automatic locale name resolution:
-
-```tsx
-const displayNames = new Intl.DisplayNames([locale], {type: 'language'});
-
-// In the <option>:
-<option key={loc} value={loc}>
-  {displayNames.of(loc) ?? loc}
-</option>
-```

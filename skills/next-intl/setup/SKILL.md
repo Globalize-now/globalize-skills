@@ -572,12 +572,23 @@ Create a `LanguageSwitcher` component that lets users switch between the configu
 
 The component should:
 - Display all configured locales from `routing.locales`
+- Show human-readable locale names using `Intl.DisplayNames` (not raw locale codes)
 - Highlight the currently active locale
 - Switch locale using the navigation helpers from Step 10
+- Be styled to blend with the project's existing UI
 
-Follow the variant-specific reference file for this step. It provides the component implementation and wiring instructions for your router type.
+**Styling**: Before writing the component, examine the project's styling approach and existing navigation/header:
+1. Detect the CSS methodology — Tailwind CSS, CSS Modules, styled-components, Emotion, plain CSS, or inline styles
+2. Look at the existing header, navbar, or navigation component where the switcher will be placed
+3. Style the switcher using the same approach and visual patterns (font sizes, colors, spacing, border styles) so it looks native to the site
+
+If you cannot determine the project's styling approach, use the inline-styled baseline from the reference file.
+
+Follow the variant-specific reference file for this step. It provides the component implementation and wiring instructions for your router type. Adapt the styling from the reference to use the project's CSS approach.
 
 After creating the component, import and render it in a visible location — typically the root layout or a shared navigation/header component. The switcher should be accessible from every page.
+
+**After wiring the switcher**, tell the user: _"I've added a language switcher styled to match your existing UI. Please review the component and customise its appearance, position, and locale display names as you see fit."_
 
 ---
 

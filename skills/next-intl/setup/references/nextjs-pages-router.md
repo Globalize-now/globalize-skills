@@ -381,22 +381,30 @@ import {useRouter} from 'next/router';
 export default function LanguageSwitcher() {
   const router = useRouter();
   const {locale, locales, asPath} = router;
+  const displayNames = new Intl.DisplayNames([locale ?? 'en'], {type: 'language'});
 
   return (
-    <div style={{display: 'flex', gap: '8px'}}>
+    <nav style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
       {locales?.map((loc) => (
-        <Link key={loc} href={asPath} locale={loc}>
-          <span style={{fontWeight: loc === locale ? 'bold' : 'normal'}}>
-            {loc}
-          </span>
+        <Link key={loc} href={asPath} locale={loc} style={{
+          padding: '0.25rem 0.5rem',
+          borderRadius: '0.25rem',
+          textDecoration: 'none',
+          color: 'inherit',
+          fontWeight: loc === locale ? 600 : 400,
+          backgroundColor: loc === locale ? 'rgba(0, 0, 0, 0.06)' : 'transparent',
+        }}>
+          {displayNames.of(loc) ?? loc}
         </Link>
       ))}
-    </div>
+    </nav>
   );
 }
 ```
 
-Each `<Link>` points to the same page (`asPath`) but with a different `locale` prop — Next.js handles the locale prefix automatically.
+Each `<Link>` points to the same page (`asPath`) but with a different `locale` prop — Next.js handles the locale prefix automatically. `Intl.DisplayNames` renders locale names in the user's current language (e.g. "Deutsch" when viewing in German).
+
+**Styling**: The example uses inline styles as a baseline. Adapt the styling to match the project's CSS approach (Tailwind, CSS Modules, etc.) and the visual style of the surrounding navigation.
 
 **Wiring**: Import into `pages/_app.tsx` or a shared layout/header component:
 
@@ -417,15 +425,6 @@ export default function App({Component, pageProps}: AppProps) {
     </NextIntlClientProvider>
   );
 }
-```
-
-**Displaying locale names**: The example renders raw locale codes. For display names, use `Intl.DisplayNames`:
-
-```tsx
-const displayNames = new Intl.DisplayNames([locale ?? 'en'], {type: 'language'});
-
-// In the Link:
-<span>{displayNames.of(loc) ?? loc}</span>
 ```
 
 ## SEO: Alternate Language Tags
