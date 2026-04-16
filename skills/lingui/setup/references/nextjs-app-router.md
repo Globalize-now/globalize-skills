@@ -184,8 +184,7 @@ import { setI18n } from '@lingui/react/server'
 import { getI18nInstance } from '../appRouterI18n'
 import { LinguiClientProvider } from '../LinguiClientProvider'
 import { getDirection } from '../getDirection'
-
-const locales = ['en', 'fr']  // adjust to match lingui.config.ts
+import { locales } from '../i18n/locales'
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }))
@@ -345,9 +344,7 @@ Bare paths (`/about`) serve the source locale directly — the middleware rewrit
 ```ts
 // src/middleware.ts — Strategy 1: unprefixed source locale
 import { NextRequest, NextResponse } from 'next/server'
-
-const locales = ['en', 'fr']  // adjust to match lingui.config.ts
-const sourceLocale = 'en'
+import { locales, sourceLocale } from './i18n/locales'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -378,9 +375,7 @@ Every locale has a prefix (`/en/about`, `/fr/about`). Bare paths permanently red
 ```ts
 // src/middleware.ts — Strategy 2: all locales prefixed
 import { NextRequest, NextResponse } from 'next/server'
-
-const locales = ['en', 'fr']  // adjust to match lingui.config.ts
-const sourceLocale = 'en'
+import { locales, sourceLocale } from './i18n/locales'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -419,8 +414,7 @@ Create a client-side hook that reads the current locale from the route params:
 'use client'
 
 import { useParams } from 'next/navigation'
-
-const sourceLocale = 'en'  // adjust to match lingui.config.ts
+import { sourceLocale } from '../i18n/locales'
 
 /**
  * Returns a function that prefixes paths with the current locale.
@@ -520,6 +514,54 @@ Tell the user:
 > - `redirect("/...")` in Server Components — prefix with the `locale` param: `` redirect(`/${locale}/path`) ``
 >
 > Navigation components (headers, sidebars, footers) are the highest priority since they appear on every page.
+
+### SEO: Alternate Language Tags
+
+Alternate language tags (`hreflang`) tell search engines which locale variants exist for each page, preventing duplicate content issues and helping search engines serve the right locale to each user.
+
+**Only relevant for Strategy 1 and 2.** If the user chose Option 3 (no locale routing), skip this section — there are no locale-specific URLs to declare.
+
+Add `generateMetadata` to the root layout (or to individual page files for page-specific paths):
+
+```tsx
+// src/app/[locale]/layout.tsx (add generateMetadata to existing layout)
+import type { Metadata } from 'next'
+import { locales, sourceLocale } from '../i18n/locales'
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+
+function getLocaleUrl(pathname: string, locale: string) {
+  // Strategy 1: source locale unprefixed
+  const prefix = locale === sourceLocale ? '' : `/${locale}`
+  return `${siteUrl}${prefix}${pathname}`
+  // Strategy 2: all prefixed — use `/${locale}${pathname}` for all
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const pathname = '/'  // adjust per page
+
+  return {
+    alternates: {
+      canonical: getLocaleUrl(pathname, locale),
+      languages: Object.fromEntries(
+        [...locales.map((l) => [l, getLocaleUrl(pathname, l)]),
+         ['x-default', getLocaleUrl(pathname, sourceLocale)]]
+      ),
+    },
+  }
+}
+```
+
+Notes:
+
+- `NEXT_PUBLIC_SITE_URL` must be set in the environment (e.g., `https://example.com`) — hreflang requires absolute URLs.
+- Each page can export its own `generateMetadata` for page-specific paths; the layout version covers the base case.
+- If many pages need custom metadata, extract `getLocaleUrl` into `src/i18n/locales.ts` to keep it DRY.
 
 ### Using translations in components
 

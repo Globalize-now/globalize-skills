@@ -139,16 +139,28 @@ Additional packages (compiler plugin, build tool plugin) are specified in the re
 
 Create `lingui.config.ts` (or `.js` for CJS projects) in the project root, next to `package.json`.
 
+First, create the shared locale constants module. This file is the single source of truth for locale configuration — both `lingui.config.ts` and runtime code (layouts, middleware) import from it:
+
+```ts
+// src/i18n/locales.ts
+export const sourceLocale = 'en'
+export const locales = ['en'] as const
+export type Locale = (typeof locales)[number]
+```
+
+Populate `sourceLocale` with the detected source locale, and `locales` with the source locale plus any target locales the user requested.
+
 ### Per-page catalogs (default for file-based routing)
 
 If the project has file-based routing (detected in Step 1), use Lingui's experimental extractor to produce per-page catalogs. This crawls the dependency tree from each route entry point, so every page only loads the translations it actually uses — critical for keeping bundle sizes small at scale.
 
 ```ts
 import type { LinguiConfig } from '@lingui/conf'
+import { locales, sourceLocale } from './src/i18n/locales'
 
 const config: LinguiConfig = {
-  sourceLocale: 'en',
-  locales: ['en'],
+  sourceLocale,
+  locales: [...locales],
   catalogs: [],
   experimental: {
     extractor: {
@@ -192,10 +204,11 @@ If the project has no file-based routing (plain Vite SPA, CRA, or programmatic r
 
 ```ts
 import type { LinguiConfig } from '@lingui/conf'
+import { locales, sourceLocale } from './src/i18n/locales'
 
 const config: LinguiConfig = {
-  sourceLocale: 'en',
-  locales: ['en'],
+  sourceLocale,
+  locales: [...locales],
   catalogs: [
     {
       path: '<rootDir>/src/locales/{locale}/messages',
