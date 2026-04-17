@@ -74,6 +74,9 @@ Before wrapping strings, understand what the app does — this directly affects 
 Choose the right macro for each situation:
 
 ```
+Does the string's wording change based on a number (e.g. "3 items" / "1 item", "You have {n} messages")?
+  YES → <Plural> in JSX, or t`{count, plural, one {...} other {...}}` in non-JSX (see Step 6)
+
 Is this a string in JSX content (visible text between tags)?
   YES → <Trans>text</Trans>
 
@@ -84,6 +87,8 @@ Is this a string used as a prop value (placeholder, aria-label, title, alt)?
 Is this a string in non-JSX code (utility function, class method)?
   YES → t from @lingui/core/macro
 ```
+
+Check the plural question first. A count-dependent string wrapped in plain `<Trans>` is a bug — the singular/plural choice is baked into English and can't be translated to languages with different plural rules.
 
 ### Import reference table
 
@@ -192,6 +197,20 @@ Scan files systematically for these patterns. Apply the confidence tiers to deci
   ```tsx
   const msg = "Hello " + name + "!"  // ← flag, use t`Hello ${name}!` instead
   ```
+
+- **Count-dependent phrasing — plural candidates**: Any UI string that combines a number (literal, variable, prop, or expression) with wording that changes based on that number. This is the most commonly-missed gap — do not wrap these in plain `<Trans>`. Route them to Step 6.
+  ```tsx
+  <p>You have 3 new messages</p>              // ← flag — plural
+  <span>{`${count} items`}</span>              // ← flag — plural
+  <div>{items.length} results</div>            // ← flag — plural
+
+  // Wrong — plain wrap bakes English plural rules into the message
+  <p><Trans>{count} items selected</Trans></p>
+
+  // Right — Plural macro handles every language's plural rules
+  <p><Plural value={count} one="# item selected" other="# items selected" /></p>
+  ```
+  Also flag `count === 1 ? t\`item\` : t\`items\`` ternaries — two translation keys cannot express plural rules in other languages. Rewrite as a single `<Plural>` or ICU plural `t`.
 
 - **Imported strings referenced in JSX**: `<h1>{title}</h1>` where `title` is an imported identifier. Trace the import to its definition; if it resolves to a bare string literal (e.g. `export const title = "Welcome"`), flag **the definition site**, not the JSX site — that is where the wrapping goes.
 

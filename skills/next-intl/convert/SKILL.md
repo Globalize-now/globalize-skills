@@ -62,6 +62,10 @@ Then continue with the steps below.
 Choose the right function for each situation:
 
 ```
+Does the string's wording change based on a number (e.g. "3 items" / "1 item", "You have {n} messages")?
+  YES → store as ICU plural in messages/*.json and call t('key', {count}) (see Step 5)
+        then continue below to pick the right translator API (server vs. client)
+
 Is this a Server Component (no 'use client' directive, in app/ directory)?
   YES → getTranslations(namespace) from next-intl/server (async, must await)
 
@@ -195,6 +199,24 @@ Scan files systematically for these patterns. Apply the confidence tiers to deci
   ```tsx
   const msg = "Hello " + name + "!"  // <- flag, use t('greeting', {name}) instead
   ```
+
+- **Count-dependent phrasing — plural candidates**: Any UI string that combines a number (literal, variable, prop, or expression) with wording that changes based on that number. This is the most commonly-missed gap — do not store these as plain strings in `messages/*.json`. Route them to Step 5.
+  ```tsx
+  <p>You have 3 new messages</p>              // <- flag — plural
+  <span>{`${count} items`}</span>              // <- flag — plural
+  <div>{items.length} results</div>            // <- flag — plural
+  ```
+  ```tsx
+  // Wrong — plain key, English plural baked into the message
+  <p>{t('itemsSelected', {count})}</p>
+  // messages/en.json: {"itemsSelected": "{count} items selected"}
+
+  // Right — ICU plural, every language's rules are localizable
+  <p>{t('itemsSelected', {count})}</p>
+  // messages/en.json:
+  //   {"itemsSelected": "{count, plural, one {# item selected} other {# items selected}}"}
+  ```
+  Also flag `count === 1 ? t('itemSingular') : t('itemPlural')` ternaries — two keys cannot express plural rules in other languages. Rewrite as a single ICU plural key.
 
 - **Imported strings referenced in JSX**: `<h1>{title}</h1>` where `title` is an imported identifier. Trace the import to its definition; if it resolves to a bare string literal (e.g. `export const title = "Welcome"`), flag it.
 

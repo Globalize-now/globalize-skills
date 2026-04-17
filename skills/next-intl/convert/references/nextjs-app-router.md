@@ -393,3 +393,37 @@ function SaveButton() {
   return <button onClick={handleSave}>{t('save')}</button>;
 }
 ```
+
+---
+
+## Plurals
+
+Count-dependent strings go into `messages/*.json` as ICU plurals — not as plain strings. The call site looks the same regardless of router.
+
+**Server component:**
+```tsx
+import {getTranslations} from 'next-intl/server';
+
+export default async function Inbox({count}: {count: number}) {
+  const t = await getTranslations('Inbox');
+  return <p>{t('unread', {count})}</p>;
+}
+```
+
+**Client component:**
+```tsx
+'use client';
+import {useTranslations} from 'next-intl';
+
+export default function Inbox({count}: {count: number}) {
+  const t = useTranslations('Inbox');
+  return <p>{t('unread', {count})}</p>;
+}
+```
+
+```json
+// messages/en.json
+{"Inbox": {"unread": "{count, plural, one {# unread message} other {# unread messages}}"}}
+```
+
+Always pass `{count}` — even for a hardcoded literal like `<p>1 unread message</p>`, rewrite it as `{t('unread', {count: 1})}` with the ICU plural key. Translators will then produce the right wording for every language.

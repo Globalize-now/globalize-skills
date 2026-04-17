@@ -18,6 +18,10 @@ Apply these rules as you write code. Every user-visible string must be wrapped b
 ## Macro decision tree
 
 ```
+Does the string's wording change based on a number (e.g. "3 items" / "1 item", "You have {n} messages")?
+  YES → <Plural> in JSX, or t`{count, plural, one {...} other {...}}` in non-JSX
+        (see "Plurals, select, and ICU MessageFormat" below)
+
 Is this text rendered in JSX?
   YES → <Trans>text</Trans>
 
@@ -30,6 +34,8 @@ Is this defined outside a component (constant, config object, array)?
 Is this in non-React code (utility, class, standalone function)?
   YES → import { t } from '@lingui/core/macro'
 ```
+
+Check the plural question first. Plain `<Trans>` around a count-dependent string bakes English plural rules into the message and breaks every language with different rules.
 
 ### Next.js App Router (RSC) rules
 
@@ -188,6 +194,8 @@ export default async function PricePage({ params }: { params: Promise<{ locale: 
 ---
 
 ## Plurals, select, and ICU MessageFormat
+
+**When to reach for this:** Any time a string's wording depends on a number — singular/plural nouns ("item"/"items"), subject-verb agreement ("is"/"are"), or anything else count-sensitive. If a count variable (or a literal number) is part of the string, it is a plural string. Use `<Plural>` / ICU plural, not `<Trans>` / plain `t`. This applies to literal numbers too — `"1 new message"` should be written as `<Plural value={1} one="# new message" other="# new messages" />` so both forms are localizable.
 
 In JSX, prefer the `<Plural>`, `<Select>`, and `<SelectOrdinal>` macros — they are more readable and compile to `<Trans>` with ICU syntax automatically. In non-JSX contexts (template literals), use ICU syntax inside `t`.
 
