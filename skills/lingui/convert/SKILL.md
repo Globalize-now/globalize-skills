@@ -193,6 +193,16 @@ Scan files systematically for these patterns. Apply the confidence tiers to deci
   const msg = "Hello " + name + "!"  // ← flag, use t`Hello ${name}!` instead
   ```
 
+- **Imported strings referenced in JSX**: `<h1>{title}</h1>` where `title` is an imported identifier. Trace the import to its definition; if it resolves to a bare string literal (e.g. `export const title = "Welcome"`), flag **the definition site**, not the JSX site — that is where the wrapping goes.
+
+  **Disambiguation — a JSX expression `{foo}` can be:**
+  1. An import resolving to a string literal in another module → **flag the definition** (see the cross-module pattern in `lingui-code`)
+  2. A component prop passed from a parent → **skip** (the parent will be processed on its own turn)
+  3. A local variable or function parameter → **handle at the assignment site in the same file**
+  4. A formatted or computed value (`{formatDate(x)}`, `{count + 1}`) → **not a string** — handle the underlying data, not the expression
+
+  Only case (1) adds a new flag. The others are covered by existing rules or belong elsewhere. Files matching `**/{constants,copy,strings,labels,messages,i18n}*.{ts,tsx,js,jsx}` are the highest-signal locations for case (1).
+
 ### Flag with judgment (medium confidence)
 
 Review these and wrap only if they appear in the actual UI:
@@ -466,11 +476,12 @@ You do not need to add domain prefixes (like `auth.login` or `dashboard.alerts`)
 
 Before wrapping strings, scan the project to determine scope:
 
-1. **Glob** for all `.tsx`, `.ts`, `.jsx`, `.js` files under the source directories. Exclude `node_modules`, test files (`*.test.*`, `*.spec.*`, `__tests__/`), config files (`*.config.*`), and type declarations (`.d.ts`).
+1. **Glob** for all `.tsx`, `.ts`, `.jsx`, `.js` files under the source directories. Exclude `node_modules`, test files (`*.test.*`, `*.spec.*`, `__tests__/`), config files (`*.config.*`), and type declarations (`.d.ts`). Treat files matching `**/{constants,copy,strings,labels,messages,i18n}*.{ts,tsx,js,jsx}` as high-signal — they often hold exported user-facing string constants that JSX-text grep won't find.
 2. **Quick-grep** each file for translatable string indicators:
    - Bare JSX text: lines with `>Some text<` patterns (text between JSX tags not wrapped in `{`)
    - User-visible attributes with string literals: `placeholder="`, `aria-label="`, `title="`, `alt="`
    - String concatenation near JSX: `"text" +` or `+ "text"` patterns
+   - Exported string literals: `export const <camelCase> = "..."` — candidate for the cross-module rule in Step 5 (flag only if the identifier is imported and rendered in JSX elsewhere; skip `ALL_CAPS` enum codes)
 3. **Build a candidate file list** — files with at least one match, sorted by match count (descending).
 4. **Decide the processing path:**
    - **15 files or fewer** → proceed to [8.1 Sequential Processing](#81-sequential-processing)

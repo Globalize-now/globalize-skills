@@ -196,6 +196,22 @@ Scan files systematically for these patterns. Apply the confidence tiers to deci
   const msg = "Hello " + name + "!"  // <- flag, use t('greeting', {name}) instead
   ```
 
+- **Imported strings referenced in JSX**: `<h1>{title}</h1>` where `title` is an imported identifier. Trace the import to its definition; if it resolves to a bare string literal (e.g. `export const title = "Welcome"`), flag it.
+
+  **Disambiguation — a JSX expression `{foo}` can be:**
+  1. An import resolving to a string literal in another module → **flag** (see resolution below)
+  2. A component prop passed from a parent → **skip** (the parent will be processed on its own turn)
+  3. A local variable or function parameter → **handle at the assignment site in the same file**
+  4. A formatted or computed value (`{format.dateTime(x)}`, `{count + 1}`) → **not a string** — handle the underlying data, not the expression
+
+  Only case (1) adds a new flag. Files matching `**/{constants,copy,strings,labels,messages,i18n}*.{ts,tsx,js,jsx}` are the highest-signal locations.
+
+  **Resolution for next-intl:** next-intl has no `msg`-descriptor equivalent and cannot wrap a string at the definition site while keeping the identifier export alive. Pick one:
+  - **Pull the string into the component** that renders it. Replace `<h1>{title}</h1>` with `<h1>{t('title')}</h1>` and add `title` to the component's namespace in `messages/{locale}.json`. Delete the export if nothing else uses it.
+  - **Keep a key at the definition site** if the string is genuinely shared: `export const titleKey = 'common.welcomeTitle'` and call `t(titleKey)` at the call site. The value lives in `messages/{locale}.json`, not the TS module.
+
+  Do not mimic the Lingui `msg`-at-definition / `t(descriptor)`-at-call-site pattern — it doesn't exist in next-intl.
+
 ### Flag with judgment (medium confidence)
 
 Review these and wrap only if they appear in the actual UI:
@@ -378,11 +394,12 @@ Use nested objects and dot notation for related groups: `useTranslations('Auth.l
 
 Before wrapping strings, scan the project to determine scope:
 
-1. **Glob** for all `.tsx`, `.ts`, `.jsx`, `.js` files under the source directories. Exclude `node_modules`, test files (`*.test.*`, `*.spec.*`, `__tests__/`), config files (`*.config.*`), and type declarations (`.d.ts`).
+1. **Glob** for all `.tsx`, `.ts`, `.jsx`, `.js` files under the source directories. Exclude `node_modules`, test files (`*.test.*`, `*.spec.*`, `__tests__/`), config files (`*.config.*`), and type declarations (`.d.ts`). Treat files matching `**/{constants,copy,strings,labels,messages,i18n}*.{ts,tsx,js,jsx}` as high-signal — they often hold exported user-facing string constants that JSX-text grep won't find.
 2. **Quick-grep** each file for translatable string indicators:
    - Bare JSX text: lines with `>Some text<` patterns (text between JSX tags not wrapped in `{`)
    - User-visible attributes with string literals: `placeholder="`, `aria-label="`, `title="`, `alt="`
    - String concatenation near JSX: `"text" +` or `+ "text"` patterns
+   - Exported string literals: `export const <camelCase> = "..."` — candidate for the cross-module rule in Step 4 (flag only if the identifier is imported and rendered in JSX elsewhere; skip `ALL_CAPS` enum codes)
 3. **Build a candidate file list** — files with at least one match, sorted by match count (descending).
 4. **Decide the processing path:**
    - **15 files or fewer** → proceed to [7.1 Sequential Processing](#71-sequential-processing)

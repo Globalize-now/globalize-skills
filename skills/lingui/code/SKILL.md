@@ -95,7 +95,7 @@ function Field() {
 t`Welcome back, ${user.name}!`
 ```
 
-**Constants outside components:**
+**Constants outside components (same file):**
 ```tsx
 import { msg } from '@lingui/core/macro'
 import { useLingui } from '@lingui/react/macro'
@@ -111,7 +111,38 @@ function Nav() {
 }
 ```
 
-> **Tree-shaking caveat:** Module-scope `msg` calls are side-effects that bundlers cannot remove, so the containing array/object ships in every chunk that imports the module — even if unused. For lazy-loaded routes in large apps, wrap the definition in a `/* @__PURE__ */` IIFE so the bundler can drop it when nothing references it:
+**Constants imported from another module:**
+
+When a component renders an imported identifier — `<h1>{welcomeTitle}</h1>` where `welcomeTitle` comes from `lib/copy.ts` — do not try to wrap at the JSX site. The component can't call `t` on a plain string, and the string is invisible to the extractor. Wrap at the **definition site** with `msg`, export the descriptor, and resolve with `t(descriptor)` at the call site:
+
+```tsx
+// lib/copy.ts
+import { msg } from '@lingui/core/macro'
+import type { MessageDescriptor } from '@lingui/core'
+
+export const welcomeTitle: MessageDescriptor = msg`Welcome`
+export const welcomeSubtitle: MessageDescriptor = msg`Sign in to continue`
+```
+
+```tsx
+// pages/Home.tsx
+import { useLingui } from '@lingui/react/macro'
+import { welcomeTitle, welcomeSubtitle } from '../lib/copy'
+
+export function Home() {
+  const { t } = useLingui()
+  return (
+    <>
+      <h1>{t(welcomeTitle)}</h1>
+      <p>{t(welcomeSubtitle)}</p>
+    </>
+  )
+}
+```
+
+The `msg` macro is the only way to mark a string for extraction without resolving it immediately. Export `MessageDescriptor` values, never raw strings, whenever the copy belongs in a shared module.
+
+> **Tree-shaking caveat:** Module-scope `msg` calls are side-effects that bundlers cannot remove, so the containing array/object ships in every chunk that imports the module — even if unused. This applies to both the same-file and cross-module patterns above. For lazy-loaded routes in large apps, wrap the definition in a `/* @__PURE__ */` IIFE so the bundler can drop it when nothing references it:
 > ```tsx
 > const items = /* @__PURE__ */ (() => [
 >   { label: msg`Home`, href: '/' },

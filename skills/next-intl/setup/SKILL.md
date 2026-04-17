@@ -679,6 +679,8 @@ If any step fails, check in this order:
 3. **Request config** (Step 4) — is the messages import path correct?
 4. **Provider** (Step 7) — is `NextIntlClientProvider` wrapping the page content?
 
+> **Runtime lookup blind spot:** next-intl resolves keys at runtime. Missing-key console warnings only fire for keys that are **called** (`t('foo')`) but absent from `messages/*.json`. Bare `export const foo = "..."` constants imported into JSX have no key and are never called via `t` — they render as raw English in every locale and produce no warning. Do not rely on dev-server warnings as a safety net; the cross-module rule in `next-intl-convert` Step 4 must be applied during wrapping.
+
 ---
 
 ## Step 13: CI/CD (Optional)
