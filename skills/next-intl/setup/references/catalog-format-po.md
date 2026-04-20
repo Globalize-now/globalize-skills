@@ -91,7 +91,7 @@ Option notes:
 - `format: 'po'` — activates the PO loader. Without this, next-intl defaults to JSON.
 - `path: './messages'` — directory containing the `.po` files, relative to project root.
 - `locales: 'infer'` — auto-detects locales from filenames (`en.po`, `de.po`, …). Alternatively pass an explicit array, e.g. `['en', 'de', 'fr']`.
-- `precompile: true` — compiles message bodies at build time rather than request time. Recommended.
+- `precompile: true` — compiles message bodies at build time rather than request time. Recommended. Same flag as the JSON precompile path (`next-intl >= 4.8`); originally introduced for PO in 4.5. See `SKILL.md` § Common Gotchas → **`t.raw` + precompile** for the one known limitation.
 
 ### Pages Router (CJS)
 
@@ -130,6 +130,8 @@ export default withNextIntl(withMDX(nextConfig));
 ```
 
 The PO loader attaches to Webpack/Turbopack via `createNextIntlPlugin`'s return value, so composition order does not affect its behavior.
+
+`t.raw` is not supported under `precompile: true`. If the project needs `t.raw`, drop the entire `experimental.messages` block and switch `catalogFormat` back to JSON — see `SKILL.md` § Common Gotchas → **`t.raw` + precompile** for details.
 
 ### Request config path override
 

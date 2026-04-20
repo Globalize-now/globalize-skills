@@ -99,7 +99,7 @@ Read the project's `package.json`, build config (`next.config.*`), and directory
 | **src directory** | Check if the project uses `src/` prefix for `app/` or `pages/` directories. |
 | **Git repository** | `git rev-parse --is-inside-work-tree` exits 0. |
 | **Current branch** | `git branch --show-current` — record the branch name. |
-| **PO-capable** | `true` if `tsMajor` is `null` or `tsMajor >= 5`. Otherwise `false`. This mirrors the next-intl version selection in Step 2: PO support is only in `next-intl >= 4.5`, which requires `next-intl@4`, which requires TypeScript 5+. The next-intl docs do not specify a Next.js version floor for the PO loader beyond the skill's existing `nextMajor >= 12` hard stop. Stored for the Catalog Format choice below. |
+| **PO-capable** | `true` if `tsMajor` is `null` or `tsMajor >= 5`. Otherwise `false`. This mirrors the next-intl version selection in Step 2: PO support is only in `next-intl >= 4.5`, which requires `next-intl@4`, which requires TypeScript 5+. The next-intl docs do not specify a Next.js version floor for the PO loader beyond the skill's existing `nextMajor >= 12` hard stop. Stored for the Catalog Format choice below. **The same gate also governs JSON precompilation** (`next-intl >= 4.8`, also 4.x-only) — both features are opted into via the same `experimental.messages` plugin block, so one flag covers both. |
 
 ### Incompatibility Checks
 
@@ -118,7 +118,7 @@ Before proceeding, check for blockers. **If any check below says STOP, you MUST 
 
 If `PO-capable` (from the detection table) is `false`, **skip this prompt**. Select JSON automatically and tell the user:
 
-> I'm using JSON for message files. PO support requires next-intl ≥ 4.5, which requires TypeScript 5+. This project is on TypeScript {tsMajor}, so Step 2 will install `next-intl@3` — which doesn't have the PO loader. You can migrate to PO later after upgrading TypeScript.
+> I'm using JSON for message files. PO support requires next-intl ≥ 4.5, which requires TypeScript 5+. This project is on TypeScript {tsMajor}, so Step 2 will install `next-intl@3` — which doesn't have the PO loader. Build-time JSON precompilation is also unavailable on `next-intl@3` (it ships in 4.8+), so Step 5 will wire up the plain runtime plugin. You can migrate to PO and/or enable precompilation later after upgrading TypeScript.
 
 Otherwise, ask:
 
@@ -272,15 +272,67 @@ Adjust the `../../messages/` path if the project's `messages/` directory is at a
 
 **CONSENT GATE: This step modifies the project's `next.config.*` file. Describe the exact change and get confirmation before proceeding.**
 
-Wrap the existing Next.js config with `createNextIntlPlugin()`. This plugin tells Next.js where to find the `i18n/request.ts` configuration.
+Wrap the existing Next.js config with `createNextIntlPlugin()`. This plugin tells Next.js where to find the `i18n/request.ts` configuration, and — when `PO-capable` is `true` — also installs the build-time message loader (PO and/or JSON precompilation).
 
 **Before making changes:**
 
 1. Read the current `next.config.*` file.
-2. Show the user the exact modification.
-3. Proceed only after confirmation.
+2. Show the user the exact modification, including the `experimental.messages` block (when applicable) and the two implications listed under "Precompilation" below.
+3. In **guided mode**, the user must explicitly acknowledge both implications before you apply the edit.
+4. In **unguided mode**, proceed without prompting but log both implications into the end-of-run summary.
 
-### App Router
+### Precompilation (default when `PO-capable === true`)
+
+When `PO-capable` is `true`, pass an `experimental.messages` block with `precompile: true`. The plugin compiles ICU message bodies into minified ASTs at build time; a ~650-byte runtime evaluates them using native `Intl` APIs. Full ICU feature parity is preserved — interpolation (`{name}`), plurals (`{count, plural, …}`), `select`, rich text via `t.rich` / `t.markup`, and formatting helpers all work unchanged.
+
+**Two implications the user must understand before confirming:**
+
+1. **`experimental.messages` is experimental.** The next-intl maintainers reserve the right to change its shape before GA. Pin next-intl to a known-good minor (e.g. `"next-intl": "4.8.x"`) and re-read the release notes before bumping.
+2. **`t.raw` is not supported under precompilation.** With precompile on, the original ICU source strings are not retained at runtime, so `t.raw('key')` will not work. The convert skill never emits `t.raw`, so freshly-converted projects are safe. If the project has hand-written `t.raw` callers (rare), either migrate them to `t.rich` / `t.markup` / MDX / a CMS lookup, or **drop the entire `experimental.messages` block** (fall back to the bare-plugin form below) — do not try to keep the block and just set `precompile: false`, because `experimental.messages` itself rewires the loader path.
+
+### App Router — `PO-capable === true` (default)
+
+```ts
+import createNextIntlPlugin from 'next-intl/plugin';
+import type {NextConfig} from 'next';
+
+const withNextIntl = createNextIntlPlugin({
+  experimental: {
+    messages: {
+      format: 'json',
+      path: './messages',
+      locales: 'infer',
+      precompile: true
+    }
+  }
+});
+
+const nextConfig: NextConfig = {
+  // ...existing config
+};
+
+export default withNextIntl(nextConfig);
+```
+
+If the config already uses other plugins (e.g., `withMDX`, `withBundleAnalyzer`), compose them — the `experimental.messages` block stays on `createNextIntlPlugin`, composition order is unchanged:
+
+```ts
+export default withNextIntl(withMDX(nextConfig));
+```
+
+If the request config file is not at the default path (`./i18n/request.ts` or `./src/i18n/request.ts`), pass it as the second argument:
+
+```ts
+const withNextIntl = createNextIntlPlugin({
+  experimental: {
+    messages: {format: 'json', path: './messages', locales: 'infer', precompile: true}
+  }
+}, './path/to/i18n/request.ts');
+```
+
+### App Router — `PO-capable === false` fallback (TS < 5, `next-intl@3`)
+
+`next-intl@3` has no `experimental.messages` option — keep the bare plugin call:
 
 ```ts
 import createNextIntlPlugin from 'next-intl/plugin';
@@ -295,30 +347,25 @@ const nextConfig: NextConfig = {
 export default withNextIntl(nextConfig);
 ```
 
-If the config already uses other plugins (e.g., `withMDX`, `withBundleAnalyzer`), compose them:
+Use `createNextIntlPlugin('./path/to/i18n/request.ts')` to override the request path. Messages load per-request via the dynamic `import()` in `src/i18n/request.ts` — no build-time compilation.
 
-```ts
-import createNextIntlPlugin from 'next-intl/plugin';
-
-const withNextIntl = createNextIntlPlugin();
-
-export default withNextIntl(withMDX(nextConfig));
-```
-
-If the request config file is not at the default path (`./i18n/request.ts` or `./src/i18n/request.ts`), pass the path explicitly:
-
-```ts
-const withNextIntl = createNextIntlPlugin('./path/to/i18n/request.ts');
-```
-
-### Pages Router
+### Pages Router — `PO-capable === true` (default)
 
 For Pages Router, the plugin wraps the config the same way, but the `next.config.js` also needs the built-in `i18n` key for locale routing:
 
 ```js
 const createNextIntlPlugin = require('next-intl/plugin');
 
-const withNextIntl = createNextIntlPlugin();
+const withNextIntl = createNextIntlPlugin({
+  experimental: {
+    messages: {
+      format: 'json',
+      path: './messages',
+      locales: 'infer',
+      precompile: true
+    }
+  }
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -332,26 +379,30 @@ const nextConfig = {
 module.exports = withNextIntl(nextConfig);
 ```
 
+### Pages Router — `PO-capable === false` fallback
+
+```js
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin();
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  i18n: {
+    locales: ['en', 'de'],
+    defaultLocale: 'en',
+  },
+  // ...existing config
+};
+
+module.exports = withNextIntl(nextConfig);
+```
+
 The `i18n` key replaces the need for middleware — Next.js handles locale routing natively in Pages Router.
 
 ### If `catalogFormat === 'po'`
 
-Instead of the bare `createNextIntlPlugin()` calls above, pass the experimental `messages` option so the plugin installs its `.po` loader. Read `references/catalog-format-po.md` § Next.js Plugin for the full App Router and Pages Router variants, including plugin composition. The `experimental.messages` block is where the loader gets wired in:
-
-```ts
-const withNextIntl = createNextIntlPlugin({
-  experimental: {
-    messages: {
-      format: 'po',
-      path: './messages',
-      locales: 'infer',
-      precompile: true
-    }
-  }
-});
-```
-
-The `experimental` wrapper is intentional — the next-intl maintainers reserve the right to change the shape before GA. Warn the user about this at apply time.
+Swap `format: 'json'` for `format: 'po'` in the block above and follow `references/catalog-format-po.md` § Next.js Plugin for the full App Router and Pages Router variants, including plugin composition. `precompile: true` is the same flag on both formats — PO has had it since 4.5, JSON since 4.8. The "experimental" and "`t.raw`" implications above apply identically.
 
 ---
 
@@ -699,6 +750,9 @@ Run the dev server and verify the setup works end-to-end:
      },
      "HomePage": {
        "greeting": "Hello, world!"
+     },
+     "Cart": {
+       "items": "You have {count, plural, one {# item} other {# items}} in your cart."
      }
    }
    ```
@@ -709,7 +763,14 @@ Run the dev server and verify the setup works end-to-end:
 
    export default async function HomePage() {
      const t = await getTranslations('HomePage');
-     return <h1>{t('greeting')}</h1>;
+     const cart = await getTranslations('Cart');
+     return (
+       <>
+         <h1>{t('greeting')}</h1>
+         <p>{cart('items', {count: 1})}</p>
+         <p>{cart('items', {count: 5})}</p>
+       </>
+     );
    }
    ```
 
@@ -720,11 +781,23 @@ Run the dev server and verify the setup works end-to-end:
 
    export default function HomePage() {
      const t = useTranslations('HomePage');
-     return <h1>{t('greeting')}</h1>;
+     const cart = useTranslations('Cart');
+     return (
+       <>
+         <h1>{t('greeting')}</h1>
+         <p>{cart('items', {count: 1})}</p>
+         <p>{cart('items', {count: 5})}</p>
+       </>
+     );
    }
    ```
 
-5. **Verify the string renders** — "Hello, world!" should appear on the page.
+5. **Verify the output** — the page should render:
+   - `Hello, world!`
+   - `You have 1 item in your cart.`
+   - `You have 5 items in your cart.`
+
+   **Plural check is non-negotiable when `PO-capable === true`** (i.e. Step 5 emitted the `experimental.messages` block with `precompile: true`). The plural output exercises the precompile → ~650 B runtime path end-to-end; if the runtime fails to evaluate the compiled AST, plurals will render as the raw ICU source (`You have {count, plural, ...}`) or as empty strings while the simple `t('greeting')` still works. If you see that failure signature, **stop the setup, report to the user**, and offer to drop the entire `experimental.messages` block from `next.config.*` (falls back to per-request JSON loading — simple greeting keeps working, plurals start working again) before continuing to Step 13.
 
 6. **Check locale switching** — use the language switcher component from Step 11 to switch between locales. Verify that the page content updates to the alternate locale's messages and the URL prefix changes as expected per your locale prefix strategy.
 
@@ -955,7 +1028,9 @@ export default async function InvoicePage() {
 
 - **Dynamic rendering without explicit props**: Using `useNow()` or `useTimeZone()` in Client Components without passing `now` or `timeZone` to `NextIntlClientProvider` forces the entire page into dynamic rendering. If you need static rendering, provide these values explicitly from the server layout.
 
-- **PO format is experimental** (only if `catalogFormat === 'po'`): the `experimental.messages` option in next-intl 4.5 is explicitly marked experimental and may change in future minor versions. Pin next-intl to a known-good minor (e.g. `"next-intl": "4.5.x"`) and re-read the release notes before bumping. If the API shifts and you need to escape quickly, convert `.po` bodies back to JSON (`msgid` → JSON key, `msgstr` → value, drop comments), rename the files, and remove the `experimental.messages` block.
+- **`experimental.messages` is experimental** (applies whenever Step 5 emits the block — JSON precompile on 4.8+ or PO on 4.5+): the option is explicitly marked experimental and may change in future minor versions. Pin next-intl to a known-good minor (e.g. `"next-intl": "4.8.x"`) and re-read the release notes before bumping. If the API shifts and you need to escape quickly: for JSON projects, just remove the `experimental.messages` block to fall back to per-request loading; for PO projects, also convert `.po` bodies back to JSON (`msgid` → JSON key, `msgstr` → value, drop comments) and rename the files.
+
+- **`t.raw` + precompile**: `t.raw('key')` returns the uncompiled source string for a message. With `precompile: true` on (Step 5's default when `PO-capable === true`), those source strings are not retained at runtime — only the compiled ASTs survive — so `t.raw` does not work. Options: (1) migrate callers to `t.rich` / `t.markup` / MDX / a CMS lookup; (2) drop the **entire** `experimental.messages` block from `next.config.*` (falls back to the bare-plugin form in Step 5 § `PO-capable === false` fallback). Do not try to keep `experimental.messages` and just set `precompile: false` — the block itself rewires the loader path.
 
 ---
 
